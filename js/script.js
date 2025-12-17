@@ -54,7 +54,7 @@ function createSheepHead() {
   });
 
   // Cara
-  const faceGeo = new THREE.IcosahedronGeometry(0.35, 0);
+  const faceGeo = new THREE.IcosahedronGeometry(0.34, 0);
   const face = new THREE.Mesh(faceGeo, blackMat);
   face.position.set(0, -0.05, 0.25);
   face.scale.set(1, 1.6, 1.3);
@@ -92,16 +92,14 @@ function createSheepHead() {
     return grp;
   };
 
-  const earLeft = createFlattenedCapsule(0.06, 0.25, 0.45);
-  earLeft.position.set(-0.2, 0.3, 0.4);
-  earLeft.rotation.z = Math.PI / 3;
-  earLeft.rotation.x = Math.PI / 4;
+  const earLeft = createFlattenedCapsule(0.065, 0.28, 0.35);
+  earLeft.position.set(-0.24, 0.18, 0.32);
+  earLeft.rotation.set(-Math.PI / 2.6, -0.7, Math.PI / 1.9);
   headGroup.add(earLeft);
 
-  const earRight = createFlattenedCapsule(0.06, 0.25, 0.45);
-  earRight.position.set(0.2, 0.3, 0.4);
-  earRight.rotation.z = -Math.PI / 3;
-  earRight.rotation.x = Math.PI / 4;
+  const earRight = createFlattenedCapsule(0.065, 0.28, 0.35);
+  earRight.position.set(0.24, 0.18, 0.32);
+  earRight.rotation.set(-Math.PI / 2.6, 0.7, -Math.PI / 1.9);
   headGroup.add(earRight);
 
   // Olhos
