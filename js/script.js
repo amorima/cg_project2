@@ -3,8 +3,8 @@ import { OrbitControls } from "https://unpkg.com/three@0.126.0/examples/jsm/cont
 
 // Setup da cena
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb); // Céu azul
-scene.fog = new THREE.Fog(0x87ceeb, 10, 50);
+scene.background = new THREE.Color("#87ceeb"); // Céu azul
+scene.fog = new THREE.Fog("#87ceeb", 10, 50);
 
 const camera = new THREE.PerspectiveCamera(
   60,
@@ -17,26 +17,34 @@ camera.position.set(0, 5, 10);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // Ligar sombras
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Suavizar sombras
 document.body.appendChild(renderer.domElement);
 
 // Luzes
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight("#ffffff", 0.6);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const dirLight = new THREE.DirectionalLight("#ffffff", 0.8);
 dirLight.position.set(10, 20, 10);
 dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 80;
+dirLight.shadow.camera.left = -30;
+dirLight.shadow.camera.right = 30;
+dirLight.shadow.camera.top = 30;
+dirLight.shadow.camera.bottom = -30;
 scene.add(dirLight);
 
 // Chão
 const planeGeo = new THREE.PlaneGeometry(100, 100);
-const planeMat = new THREE.MeshStandardMaterial({ color: 0x57a639 });
+const planeMat = new THREE.MeshStandardMaterial({ color: "#57a639" });
 const ground = new THREE.Mesh(planeGeo, planeMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Controles
+// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
 // createSheepHead: cabeça low-poly (icosaedro, orelhas, olhos)
@@ -45,11 +53,11 @@ function createSheepHead() {
 
   // Materiais
   const blackMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1a1a,
+    color: "#1a1a1a",
     flatShading: true,
   });
   const whiteMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
+    color: "#ffffff",
     flatShading: true,
   });
 
@@ -154,16 +162,16 @@ function createSheep() {
 
   // Materiais
   const woolMaterial = new THREE.MeshStandardMaterial({
-    color: 0xf5f5f5,
+    color: "#f5f5f5",
     flatShading: true,
     roughness: 0.9,
   });
   const skinMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2b2b2b,
+    color: "#2b2b2b",
     flatShading: true,
   });
   const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: 0x000000,
+    color: "#000000",
     flatShading: true,
   });
 
@@ -176,7 +184,7 @@ function createSheep() {
   const bodyGeo = new THREE.IcosahedronGeometry(1, 1);
   const body = new THREE.Mesh(bodyGeo, woolMaterial);
   body.castShadow = true;
-  body.scale.set(1.2, 1, 1.5);
+  body.scale.set(1.2, 0.95, 1.5);
   bodyGroup.add(body);
 
   // Cabeça
