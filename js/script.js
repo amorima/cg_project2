@@ -47,232 +47,194 @@ scene.add(ground);
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// createSheepHead: cabeça low-poly (icosaedro, orelhas, olhos)
-function createSheepHead() {
-  const headGroup = new THREE.Group();
-
-  // Materiais
-  const blackMat = new THREE.MeshStandardMaterial({
-    color: "#1a1a1a",
-    flatShading: true,
-  });
-  const whiteMat = new THREE.MeshStandardMaterial({
-    color: "#ffffff",
-    flatShading: true,
-  });
-
-  // Cara
-  const faceGeo = new THREE.IcosahedronGeometry(0.34, 0);
-  const face = new THREE.Mesh(faceGeo, blackMat);
-  face.position.set(0, -0.05, 0.25);
-  face.scale.set(1, 1.6, 1.3);
-  face.castShadow = true;
-  headGroup.add(face);
-
-  // Orelhas
-  const createFlattenedCapsule = (radius, length, flatZ = 0.5) => {
-    const grp = new THREE.Group();
-
-    const cylGeo = new THREE.CylinderGeometry(
-      radius,
-      radius,
-      length,
-      12,
-      1,
-      true
-    );
-    const cyl = new THREE.Mesh(cylGeo, blackMat);
-    cyl.castShadow = true;
-    grp.add(cyl);
-
-    const sphereGeo = new THREE.SphereGeometry(radius, 12, 12);
-    const top = new THREE.Mesh(sphereGeo, blackMat);
-    top.position.y = length / 2;
-    top.castShadow = true;
-    grp.add(top);
-
-    const bottom = new THREE.Mesh(sphereGeo, blackMat);
-    bottom.position.y = -length / 2;
-    bottom.castShadow = true;
-    grp.add(bottom);
-
-    grp.scale.set(1, 1, flatZ);
-    return grp;
-  };
-
-  const earLeft = createFlattenedCapsule(0.065, 0.28, 0.35);
-  earLeft.position.set(-0.24, 0.18, 0.32);
-  earLeft.rotation.set(-Math.PI / 2.6, -0.7, Math.PI / 1.9);
-  headGroup.add(earLeft);
-
-  const earRight = createFlattenedCapsule(0.065, 0.28, 0.35);
-  earRight.position.set(0.24, 0.18, 0.32);
-  earRight.rotation.set(-Math.PI / 2.6, 0.7, -Math.PI / 1.9);
-  headGroup.add(earRight);
-
-  // Olhos
-  const eyeWhiteGeo = new THREE.SphereGeometry(0.09, 8, 8);
-  const eyeWhiteL = new THREE.Mesh(eyeWhiteGeo, whiteMat);
-  eyeWhiteL.position.set(-0.18, 0.08, 0.5);
-  eyeWhiteL.scale.set(1, 1, 1);
-  headGroup.add(eyeWhiteL);
-  const eyeWhiteR = new THREE.Mesh(eyeWhiteGeo, whiteMat);
-  eyeWhiteR.position.set(0.18, 0.08, 0.5);
-  eyeWhiteR.scale.set(1, 1, 1);
-  headGroup.add(eyeWhiteR);
-
-  // Pupilas
-  const pupilGeo = new THREE.SphereGeometry(0.04, 8, 8);
-  const pupilL = new THREE.Mesh(pupilGeo, blackMat);
-  pupilL.position.set(-0.18, 0.06, 0.55);
-  headGroup.add(pupilL);
-  const pupilR = new THREE.Mesh(pupilGeo, blackMat);
-  pupilR.position.set(0.18, 0.06, 0.55);
-  headGroup.add(pupilR);
-
-  // Pálpebras
-  const eyelidRadius = 0.09;
-  const eyelidGeo = new THREE.SphereGeometry(
-    eyelidRadius,
-    8,
-    8,
-    0,
-    Math.PI * 2,
-    0,
-    Math.PI / 2
-  );
-  const eyelidLeft = new THREE.Mesh(eyelidGeo, blackMat);
-  eyelidLeft.position.set(-0.18, 0.09, 0.5);
-  eyelidLeft.scale.set(1.15, 1.15, 1.15);
-  eyelidLeft.castShadow = true;
-  headGroup.add(eyelidLeft);
-
-  const eyelidRight = new THREE.Mesh(eyelidGeo, blackMat);
-  eyelidRight.position.set(0.18, 0.09, 0.5);
-  eyelidRight.scale.set(1.15, 1.15, 1.15);
-  eyelidRight.castShadow = true;
-  headGroup.add(eyelidRight);
-
-  return headGroup;
+// Função para converter graus em radianos
+function rad(degrees) {
+  return degrees * (Math.PI / 180);
 }
 
-// Construção da ovelha
-function createSheep() {
-  const sheepGroup = new THREE.Group();
+// Classe Sheep com articulações para animação de andar
+class Sheep {
+  constructor() {
+    this.group = new THREE.Group();
+    this.group.position.y = 1.8;
 
-  // Materiais
-  const woolMaterial = new THREE.MeshStandardMaterial({
-    color: "#f5f5f5",
-    flatShading: true,
-    roughness: 0.9,
-  });
-  const skinMaterial = new THREE.MeshStandardMaterial({
-    color: "#2b2b2b",
-    flatShading: true,
-  });
-  const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: "#000000",
-    flatShading: true,
-  });
+    this.woolMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 1,
+      flatShading: true,
+    });
+    this.skinMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffaf8b,
+      roughness: 1,
+      flatShading: true,
+    });
+    this.darkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4b4553,
+      roughness: 1,
+      flatShading: true,
+    });
 
-  // Corpo
-  const bodyGroup = new THREE.Group();
-  bodyGroup.position.y = 1.35;
-  sheepGroup.add(bodyGroup);
+    this.walkCycle = 0;
 
-  // Corpo principal (centro)
-  const bodyGeo = new THREE.IcosahedronGeometry(1, 1);
-  const body = new THREE.Mesh(bodyGeo, woolMaterial);
-  body.castShadow = true;
-  body.scale.set(1.2, 0.95, 1.5);
-  bodyGroup.add(body);
-
-  // Cabeça
-  const headPivot = new THREE.Group();
-  headPivot.position.set(0, 0.35, 1.1);
-  bodyGroup.add(headPivot);
-
-  const head = createSheepHead();
-  headPivot.add(head);
-
-  // Rabo
-  const tailPivot = new THREE.Group();
-  tailPivot.position.set(0, 0.2, -1.4);
-  bodyGroup.add(tailPivot);
-
-  // Ponta da cauda
-  const tailGeo = new THREE.IcosahedronGeometry(0.28, 1);
-  const tail = new THREE.Mesh(tailGeo, woolMaterial);
-  tail.position.set(0, -0.05, -0.1);
-  tail.scale.set(0.9, 1.1, 0.9);
-  tail.castShadow = true;
-  tailPivot.add(tail);
-
-  // Pernas
-  function createLeg(x, y, z) {
-    const legGroup = new THREE.Group();
-    legGroup.position.set(x, y, z);
-
-    // Coxa
-    const upperLegGeo = new THREE.CylinderGeometry(0.15, 0.18, 0.45, 8);
-    const upperLeg = new THREE.Mesh(upperLegGeo, skinMaterial);
-    upperLeg.position.y = -0.225;
-    upperLeg.castShadow = true;
-    legGroup.add(upperLeg);
-
-    // Joelho
-    const kneePivot = new THREE.Group();
-    kneePivot.position.set(0, -0.45, 0);
-    legGroup.add(kneePivot);
-
-    // Canela
-    const lowerLegGeo = new THREE.CylinderGeometry(0.12, 0.14, 0.35, 8);
-    const lowerLeg = new THREE.Mesh(lowerLegGeo, skinMaterial);
-    lowerLeg.position.y = -0.175;
-    lowerLeg.castShadow = true;
-    kneePivot.add(lowerLeg);
-
-    // Casco
-    const hoofGeo = new THREE.BoxGeometry(0.18, 0.12, 0.22);
-    const hoof = new THREE.Mesh(hoofGeo, skinMaterial);
-    hoof.position.y = -0.41;
-    hoof.castShadow = true;
-    kneePivot.add(hoof);
-
-    return { mesh: legGroup, knee: kneePivot };
+    this.drawBody();
+    this.drawHead();
+    this.drawTail();
+    this.drawLegs();
   }
 
-  // Adicionar as 4 pernas ao corpo
-  const legFL = createLeg(-0.45, -0.45, 0.7);
-  bodyGroup.add(legFL.mesh);
-  const legFR = createLeg(0.45, -0.45, 0.7);
-  bodyGroup.add(legFR.mesh);
-  const legBL = createLeg(-0.45, -0.45, -0.7);
-  bodyGroup.add(legBL.mesh);
-  const legBR = createLeg(0.45, -0.45, -0.7);
-  bodyGroup.add(legBR.mesh);
+  drawBody() {
+    this.bodyGroup = new THREE.Group();
+    const bodyGeometry = new THREE.IcosahedronGeometry(1.7, 0);
+    const body = new THREE.Mesh(bodyGeometry, this.woolMaterial);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    this.bodyGroup.add(body);
+    this.group.add(this.bodyGroup);
+  }
 
-  // Referências para animação
-  sheepGroup.userData = {
-    legs: { FL: legFL, FR: legFR, BL: legBL, BR: legBR },
-    head: headPivot,
-    tail: tailPivot,
-    body: bodyGroup,
-  };
+  drawHead() {
+    this.headPivot = new THREE.Group();
+    this.headPivot.position.set(0, 0.65, 1.6);
+    this.headPivot.rotation.x = rad(-20);
+    this.bodyGroup.add(this.headPivot);
 
-  return sheepGroup;
+    const foreheadGeometry = new THREE.BoxGeometry(0.7, 0.6, 0.7);
+    const forehead = new THREE.Mesh(foreheadGeometry, this.skinMaterial);
+    forehead.castShadow = true;
+    forehead.receiveShadow = true;
+    forehead.position.y = -0.15;
+    this.headPivot.add(forehead);
+
+    const faceGeometry = new THREE.CylinderGeometry(0.5, 0.15, 0.4, 4, 1);
+    const face = new THREE.Mesh(faceGeometry, this.skinMaterial);
+    face.castShadow = true;
+    face.receiveShadow = true;
+    face.position.y = -0.65;
+    face.rotation.y = rad(45);
+    this.headPivot.add(face);
+
+    // Cabelo com vários icosaedros
+    const woolPositions = [
+      { x: 0, y: 0.15, z: 0.2, scale: 0.45 },
+      { x: -0.25, y: 0.1, z: 0.15, scale: 0.35 },
+      { x: 0.25, y: 0.1, z: 0.15, scale: 0.35 },
+      { x: -0.4, y: 0.1, z: 0.05, scale: 0.30 },
+      { x: 0.4, y: 0.1, z: 0.05, scale: 0.30 },
+    ];
+
+    woolPositions.forEach((pos) => {
+      const woolGeo = new THREE.IcosahedronGeometry(pos.scale, 0);
+      const woolMesh = new THREE.Mesh(woolGeo, this.woolMaterial);
+      woolMesh.position.set(pos.x, pos.y, pos.z);
+      woolMesh.castShadow = true;
+      woolMesh.receiveShadow = true;
+      this.headPivot.add(woolMesh);
+    });
+
+    const rightEyeGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.06, 6);
+    const rightEye = new THREE.Mesh(rightEyeGeometry, this.darkMaterial);
+    rightEye.castShadow = true;
+    rightEye.receiveShadow = true;
+    rightEye.position.set(0.35, -0.48, 0.33);
+    rightEye.rotation.set(rad(130.8), 0, rad(-45));
+    this.headPivot.add(rightEye);
+
+    const leftEye = rightEye.clone();
+    leftEye.position.x = -rightEye.position.x;
+    leftEye.rotation.z = -rightEye.rotation.z;
+    this.headPivot.add(leftEye);
+
+    const rightEarGeometry = new THREE.BoxGeometry(0.12, 0.5, 0.3);
+    rightEarGeometry.translate(0, -0.25, 0);
+    this.rightEar = new THREE.Mesh(rightEarGeometry, this.skinMaterial);
+    this.rightEar.castShadow = true;
+    this.rightEar.receiveShadow = true;
+    this.rightEar.position.set(0.35, -0.12, -0.07);
+    this.rightEar.rotation.set(rad(20), 0, rad(50));
+    this.headPivot.add(this.rightEar);
+
+    this.leftEar = this.rightEar.clone();
+    this.leftEar.position.x = -this.rightEar.position.x;
+    this.leftEar.rotation.z = -this.rightEar.rotation.z;
+    this.headPivot.add(this.leftEar);
+  }
+
+  drawTail() {
+    this.tailPivot = new THREE.Group();
+    this.tailPivot.position.set(0, 0.2, -1.6);
+    this.tailPivot.rotation.x = rad(30);
+    this.bodyGroup.add(this.tailPivot);
+
+    const tailGeo = new THREE.IcosahedronGeometry(0.35, 0);
+    const tail = new THREE.Mesh(tailGeo, this.woolMaterial);
+    tail.position.y = -0.15;
+    tail.castShadow = true;
+    tail.receiveShadow = true;
+    this.tailPivot.add(tail);
+  }
+
+  drawLegs() {
+    const createLeg = () => {
+      const legGeo = new THREE.CylinderGeometry(0.25, 0.18, 1.1, 4);
+      legGeo.translate(0, -0.55, 0);
+      const leg = new THREE.Mesh(legGeo, this.darkMaterial);
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      return leg;
+    };
+
+    this.frontRightLeg = createLeg();
+    this.frontRightLeg.position.set(0.7, -0.8, 0.5);
+    this.bodyGroup.add(this.frontRightLeg);
+
+    this.frontLeftLeg = createLeg();
+    this.frontLeftLeg.position.set(-0.7, -0.8, 0.5);
+    this.bodyGroup.add(this.frontLeftLeg);
+
+    this.backRightLeg = createLeg();
+    this.backRightLeg.position.set(0.7, -0.8, -0.5);
+    this.bodyGroup.add(this.backRightLeg);
+
+    this.backLeftLeg = createLeg();
+    this.backLeftLeg.position.set(-0.7, -0.8, -0.5);
+    this.bodyGroup.add(this.backLeftLeg);
+  }
+
+  walk() {
+    this.walkCycle += 0.06;
+
+    const hipSwing = Math.sin(this.walkCycle) * 0.3;
+
+    this.frontRightLeg.rotation.x = hipSwing;
+    this.frontLeftLeg.rotation.x = -hipSwing;
+    this.backRightLeg.rotation.x = -hipSwing;
+    this.backLeftLeg.rotation.x = hipSwing;
+
+    const bodyBob = Math.sin(this.walkCycle * 2) * 0.08;
+    this.bodyGroup.position.y = bodyBob;
+
+    const headBob = Math.sin(this.walkCycle * 2) * 0.06;
+    this.headPivot.rotation.x = rad(-20) + headBob;
+
+    const earFlap = Math.sin(this.walkCycle * 1.5) * 0.15;
+    this.rightEar.rotation.z = rad(50) + earFlap;
+    this.leftEar.rotation.z = rad(-50) - earFlap;
+
+    const tailWag = Math.sin(this.walkCycle * 1.2) * 0.25;
+    this.tailPivot.rotation.z = tailWag;
+    this.tailPivot.rotation.x = rad(30) + Math.sin(this.walkCycle * 0.8) * 0.1;
+  }
 }
 
 // Criar a Ovelha e adicionar à cena
-const mySheep = createSheep();
-scene.add(mySheep);
+const mySheep = new Sheep();
+scene.add(mySheep.group);
 
-// --- 3. LOOP DE RENDERIZAÇÃO ---
+// Loop de renderização
 function animate() {
   requestAnimationFrame(animate);
 
-  // Rotação simples para veres o modelo 3D (Remove depois)
-  // mySheep.rotation.y += 0.01;
+  mySheep.walk();
 
   renderer.render(scene, camera);
 }
