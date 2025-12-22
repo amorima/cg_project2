@@ -3,8 +3,8 @@ import { OrbitControls } from "https://unpkg.com/three@0.126.0/examples/jsm/cont
 
 // Setup da cena
 const scene = new THREE.Scene();
-scene.background = new THREE.Color("#87ceeb"); // Céu azul
-scene.fog = new THREE.Fog("#87ceeb", 10, 50);
+scene.background = new THREE.Color("#87ceeb");
+scene.fog = new THREE.Fog("#87ceeb", 30, 150);
 
 const camera = new THREE.PerspectiveCamera(
   60,
@@ -16,8 +16,8 @@ camera.position.set(0, 5, 10);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; // Ligar sombras
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Suavizar sombras
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // Luzes
@@ -113,13 +113,13 @@ class Sheep {
     face.rotation.y = rad(45);
     this.headPivot.add(face);
 
-    // Cabelo com vários icosaedros
+    // Cabelo
     const woolPositions = [
       { x: 0, y: 0.15, z: 0.2, scale: 0.45 },
       { x: -0.25, y: 0.1, z: 0.15, scale: 0.35 },
       { x: 0.25, y: 0.1, z: 0.15, scale: 0.35 },
-      { x: -0.4, y: 0.1, z: 0.05, scale: 0.30 },
-      { x: 0.4, y: 0.1, z: 0.05, scale: 0.30 },
+      { x: -0.4, y: 0.1, z: 0.05, scale: 0.3 },
+      { x: 0.4, y: 0.1, z: 0.05, scale: 0.3 },
     ];
 
     woolPositions.forEach((pos) => {
