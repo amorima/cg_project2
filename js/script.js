@@ -6,12 +6,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color("#87ceeb");
 scene.fog = new THREE.Fog("#87ceeb", 30, 150);
 
-const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  100
-);
+const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 100);
 camera.position.set(0, 15, 25);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -53,12 +48,15 @@ function rad(degrees) {
 }
 
 // Estado global para ML5
-let faceX = 0;
-let faceY = 0;
+let faceX = 0.5;
+let faceY = 0.5;
 let faceDetected = false;
 let isScared = false;
 let scaredTimer = 0;
-const statusDiv = document.getElementById("status");
+
+// Posição alvo onde as ovelhas se vão juntar (coordenadas do mundo)
+let targetWorldX = 0;
+let targetWorldZ = 0;
 
 // Classe Sheep com articulações para animação de andar
 class Sheep {
@@ -263,40 +261,6 @@ class Sheep {
     const tailWag = Math.sin(this.walkCycle * 0.4) * 0.08;
     this.tailPivot.rotation.z = tailWag;
     this.tailPivot.rotation.x = rad(30);
-
-    // Se cara detetada, olhar para ela
-    if (faceDetected) {
-      this.lookAtFace();
-    }
-  }
-
-  lookAtFace() {
-    const targetX = (faceX - 0.5) * 40;
-    const targetZ = (faceY - 0.5) * 40;
-
-    // Calcular direção para a cara
-    const toFace = new THREE.Vector3(
-      targetX - this.group.position.x,
-      0,
-      targetZ - this.group.position.z
-    );
-
-    // Ângulo necessário para olhar para a cara
-    const targetAngle = Math.atan2(toFace.x, toFace.z);
-
-    // Diferença de ângulo relativa ao corpo
-    let angleDiff = targetAngle - this.group.rotation.y;
-
-    // Normalizar entre -PI e PI
-    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-    // Limitar rotação da cabeça a 60 graus para cada lado
-    const maxHeadTurn = rad(60);
-    const headTurn = Math.max(-maxHeadTurn, Math.min(maxHeadTurn, angleDiff));
-
-    // Aplicar rotação suave da cabeça
-    this.headPivot.rotation.y += (headTurn - this.headPivot.rotation.y) * 0.05;
   }
 
   run() {
@@ -331,6 +295,14 @@ class Sheep {
       return;
     }
 
+    // Se cara detetada, mover em direção à posição alvo
+    if (faceDetected) {
+      this.moveTowardsTarget(sheepArray);
+      this.walk();
+      this.keepInBounds();
+      return;
+    }
+
     if (this.isIdle) {
       this.idleTimer++;
       if (this.idleTimer > this.idleDuration) {
@@ -352,6 +324,64 @@ class Sheep {
     }
 
     this.keepInBounds();
+  }
+
+  moveTowardsTarget(sheepArray) {
+    // Evita colisão com outras ovelhas
+    let avoidDirection = null;
+    for (const other of sheepArray) {
+      if (other === this) continue;
+      const dist = this.group.position.distanceTo(other.group.position);
+      if (dist < 3) {
+        avoidDirection = new THREE.Vector3()
+          .subVectors(this.group.position, other.group.position)
+          .normalize();
+        break;
+      }
+    }
+
+    // Se há colisão, desviar
+    if (avoidDirection) {
+      this.targetRotation = Math.atan2(avoidDirection.x, avoidDirection.z);
+      let angleDiff = this.targetRotation - this.group.rotation.y;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      this.group.rotation.y += angleDiff * 0.1;
+
+      const direction = new THREE.Vector3(0, 0, 1);
+      direction.applyQuaternion(this.group.quaternion);
+      this.group.position.add(direction.multiplyScalar(this.speed));
+      return;
+    }
+
+    // Vai para o ponto alvo
+    const toTarget = new THREE.Vector3(
+      targetWorldX - this.group.position.x,
+      0,
+      targetWorldZ - this.group.position.z
+    );
+
+    const distance = toTarget.length();
+
+    // Se já está perto do alvo, ficar idle
+    if (distance < 5) {
+      this.idle();
+      return;
+    }
+
+    // Rodar em direção ao alvo
+    this.targetRotation = Math.atan2(toTarget.x, toTarget.z);
+
+    let angleDiff = this.targetRotation - this.group.rotation.y;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+    this.group.rotation.y += angleDiff * 0.05;
+
+    // Mover em frente
+    const direction = new THREE.Vector3(0, 0, 1);
+    direction.applyQuaternion(this.group.quaternion);
+    this.group.position.add(direction.multiplyScalar(this.speed * 1.5));
   }
 
   avoidCollisions(sheepArray) {
@@ -438,84 +468,71 @@ async function initML5() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: true,
-      audio: true,
+      audio: false,
     });
     video.srcObject = stream;
     await video.play();
 
-    statusDiv.textContent = "A carregar deteção facial...";
+    // Usa facemesh para obter ponto do nariz
+    const facemesh = ml5.facemesh(video, () => {});
 
-    const faceDetector = ml5.objectDetector("cocossd", () => {
-      statusDiv.textContent = "Deteção facial pronta!";
-      detectFaces(faceDetector, video);
+    facemesh.on("face", (results) => {
+      if (results.length > 0) {
+        // Ponto do nariz
+        const nose = results[0].scaledMesh[1];
+        const noseX = nose[0];
+        const noseY = nose[1];
+
+        faceX = noseX / video.videoWidth;
+        faceY = noseY / video.videoHeight;
+        faceDetected = true;
+
+        // Transforma para coordenadas do mundo
+        targetWorldX = (0.5 - faceX) * 40;
+        targetWorldZ = (faceY - 0.5) * 30;
+      } else {
+        faceDetected = false;
+      }
     });
 
     initSpeechRecognition();
   } catch (error) {
     console.log("Webcam não disponível:", error);
-    statusDiv.textContent = "Webcam não disponível";
   }
 }
 
-function detectFaces(detector, video) {
-  detector.detect(video, (err, results) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-
-    const person = results.find((r) => r.label === "person");
-
-    if (person) {
-      faceX = (person.x + person.width / 2) / video.videoWidth;
-      faceY = (person.y + person.height / 2) / video.videoHeight;
-      faceDetected = true;
-      statusDiv.textContent = "Pessoa detetada! Ovelhas a seguir...";
-    } else {
-      faceDetected = false;
-      statusDiv.textContent = "À procura de pessoas...";
-    }
-
-    setTimeout(() => detectFaces(detector, video), 200);
-  });
-}
-
 function initSpeechRecognition() {
-  // Usar ml5 soundClassifier para detetar sons altos
+  // Deteta sons
   const classifier = ml5.soundClassifier(
     "SpeechCommands18w",
-    { probabilityThreshold: 0.7 },
+    { probabilityThreshold: 0.75 },
     () => {
-      console.log("Classificador de som carregado");
       classifier.classify(gotResult);
     }
   );
 
   function gotResult(error, results) {
-    if (error) {
-      console.error(error);
-      return;
-    }
+    if (error) return;
 
-    // Verificar se detetou algum comando
+    // Só reage a comandos relevantes
     if (results && results.length > 0) {
       const label = results[0].label.toLowerCase();
       const confidence = results[0].confidence;
 
-      // Detetar comandos que parecem "boo" ou sons fortes
+      // Sons que assustam as ovelhas
       if (
         (label === "go" ||
           label === "no" ||
           label === "up" ||
-          label === "stop") &&
-        confidence > 0.8
+          label === "wow") &&
+        confidence > 0.85
       ) {
         triggerScare();
       }
     }
   }
 
-  // Também usar Speech Recognition como backup
+  // Backup por reconhecimento de voz
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -528,8 +545,6 @@ function initSpeechRecognition() {
     recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const text = event.results[i][0].transcript.toLowerCase();
-        console.log("Ouvido:", text);
-
         if (
           text.includes("boo") ||
           text.includes("bu") ||
@@ -552,10 +567,7 @@ function initSpeechRecognition() {
 
     try {
       recognition.start();
-      console.log("Reconhecimento de voz iniciado");
-    } catch (e) {
-      console.log("Erro ao iniciar reconhecimento:", e);
-    }
+    } catch (e) {}
   }
 }
 
@@ -563,7 +575,13 @@ function triggerScare() {
   if (!isScared) {
     isScared = true;
     scaredTimer = 180;
-    statusDiv.textContent = "BOO! Ovelhas assustadas!";
+
+    // Flash vermelho
+    const flash = document.getElementById("flash-overlay");
+    flash.style.opacity = "0.6";
+    setTimeout(() => {
+      flash.style.opacity = "0";
+    }, 150);
   }
 }
 
@@ -577,7 +595,6 @@ function animate() {
     scaredTimer--;
     if (scaredTimer <= 0) {
       isScared = false;
-      statusDiv.textContent = "Ovelhas calmas novamente";
     }
   }
 
@@ -592,7 +609,18 @@ animate();
 
 // Resize Handler
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  // Manter aspect ratio 16:9
+  camera.aspect = 16 / 9;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Calcular tamanho do renderer para 16:9
+  let width = window.innerWidth;
+  let height = window.innerWidth / (16 / 9);
+
+  if (height > window.innerHeight) {
+    height = window.innerHeight;
+    width = window.innerHeight * (16 / 9);
+  }
+
+  renderer.setSize(width, height);
 });
