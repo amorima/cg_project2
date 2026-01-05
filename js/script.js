@@ -140,8 +140,8 @@ function initSpeechRecognition() {
         (label === "go" ||
           label === "no" ||
           label === "up" ||
-          label === "wow") &&
-        confidence > 0.85
+          label === "stop") &&
+        confidence > 0.75
       ) {
         triggerScare();
       }
@@ -161,6 +161,7 @@ function initSpeechRecognition() {
     recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const text = event.results[i][0].transcript.toLowerCase();
+        console.log("Voz detetada:", text);
         if (
           text.includes("boo") ||
           text.includes("bu") ||
