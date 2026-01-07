@@ -191,8 +191,8 @@ export class ShepherdDog {
     this.bodyGroup.add(this.backLeftLeg);
   }
 
-  idle(timeScale) {
-    this.walkCycle += 0.03 * timeScale;
+  idle() {
+    this.walkCycle += 0.03;
     this.tongue.visible = false;
 
     // Pernas paradas
@@ -208,17 +208,17 @@ export class ShepherdDog {
     this.headPivot.rotation.x = Math.sin(this.walkCycle * 0.5) * 0.05;
 
     // Orelhas atentas
-    const earTwitch = Math.sin(this.walkCycle * 2) * 0.1;
-    this.rightEar.rotation.z = -0.3 + earTwitch;
-    this.leftEar.rotation.z = 0.3 - earTwitch;
+    const earTwitch = Math.sin(this.walkCycle * 2) * 0.05;
+    this.rightEar.rotation.z = -0.25 + earTwitch;
+    this.leftEar.rotation.z = 0.25 - earTwitch;
 
     // Cauda abanando suavemente
     this.tailPivot.rotation.x = -0.5 + Math.sin(this.walkCycle) * 0.2;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 1.5) * 0.3;
   }
 
-  walk(timeScale) {
-    this.walkCycle += 0.12 * timeScale;
+  walk() {
+    this.walkCycle += 0.12;
     this.tongue.visible = false;
 
     const legSwing = Math.sin(this.walkCycle) * 0.4;
@@ -235,17 +235,17 @@ export class ShepherdDog {
     this.headPivot.rotation.x = Math.sin(this.walkCycle * 2) * 0.08;
 
     // Orelhas em movimento
-    const earBounce = Math.sin(this.walkCycle * 2) * 0.15;
-    this.rightEar.rotation.z = -0.3 + earBounce;
-    this.leftEar.rotation.z = 0.3 - earBounce;
+    const earBounce = Math.sin(this.walkCycle * 2) * 0.08;
+    this.rightEar.rotation.z = -0.25 + earBounce;
+    this.leftEar.rotation.z = 0.25 - earBounce;
 
     // Cauda abanando
     this.tailPivot.rotation.x = -0.3;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 2) * 0.5;
   }
 
-  run(timeScale) {
-    this.walkCycle += 0.25 * timeScale;
+  run() {
+    this.walkCycle += 0.25;
     this.tongue.visible = true;
 
     const legSwing = Math.sin(this.walkCycle) * 0.7;
@@ -263,20 +263,19 @@ export class ShepherdDog {
     this.tongue.rotation.z = Math.sin(this.walkCycle * 3) * 0.2;
 
     // Orelhas para trás
-    this.rightEar.rotation.x = 0.3;
-    this.leftEar.rotation.x = 0.3;
-    this.rightEar.rotation.z = -0.5 + Math.sin(this.walkCycle * 2) * 0.2;
-    this.leftEar.rotation.z = 0.5 - Math.sin(this.walkCycle * 2) * 0.2;
+    this.rightEar.rotation.x = 0.1;
+    this.leftEar.rotation.x = 0.1;
+    this.rightEar.rotation.z = -0.2 + Math.sin(this.walkCycle * 2) * 0.1;
+    this.leftEar.rotation.z = 0.2 - Math.sin(this.walkCycle * 2) * 0.1;
 
     // Cauda esticada
     this.tailPivot.rotation.x = 0.2;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 3) * 0.4;
   }
 
-  update(faceDetected, dogTargetX, dogTargetZ, deltaTime) {
-    const timeScale = deltaTime * 60;
-
+  update(faceDetected, dogTargetX, dogTargetZ) {
     if (!faceDetected) {
+      this.idle();
       return;
     }
 
@@ -289,7 +288,7 @@ export class ShepherdDog {
     if (distance < 0.5) {
       this.isMoving = false;
       this.currentSpeed = 0;
-      this.idle(timeScale);
+      this.idle();
       return;
     }
 
@@ -300,18 +299,16 @@ export class ShepherdDog {
     let angleDiff = this.targetRotation - this.group.rotation.y;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.group.rotation.y += angleDiff * 0.08 * timeScale;
+    this.group.rotation.y += angleDiff * 0.08;
 
     // Velocidade baseada na distância
     const targetSpeed = Math.min(0.15, distance * 0.03);
-    this.currentSpeed += (targetSpeed - this.currentSpeed) * 0.1 * timeScale;
+    this.currentSpeed += (targetSpeed - this.currentSpeed) * 0.1;
 
     // Mover em frente
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(
-      direction.multiplyScalar(this.currentSpeed * timeScale)
-    );
+    this.group.position.add(direction.multiplyScalar(this.currentSpeed));
 
     // Limitar à área
     const limitX = 45;
@@ -329,9 +326,9 @@ export class ShepherdDog {
 
     // Animação baseada na velocidade
     if (this.currentSpeed > 0.08) {
-      this.run(timeScale);
+      this.run();
     } else {
-      this.walk(timeScale);
+      this.walk();
     }
   }
 }

@@ -50,6 +50,7 @@ let faceY = 0.5;
 let faceDetected = false;
 let isScared = false;
 let scaredTimer = 0;
+let ml5Active = true;
 
 // Posição do cão pastor (controlado pela cara)
 let dogTargetX = 0;
@@ -57,6 +58,17 @@ let dogTargetZ = 0;
 
 // Instância global do cão
 let shepherdDog = null;
+
+// Estado da câmara
+let cameraMode = "default"; // 'default' ou 'firstPerson'
+
+// Controlo de teclado para primeira pessoa
+const keys = {
+  ArrowUp: false,
+  ArrowDown: false,
+  ArrowLeft: false,
+  ArrowRight: false,
+};
 
 // Criar rebanho de ovelhas
 const sheepArray = [];
@@ -92,7 +104,7 @@ async function initML5() {
     const facemesh = ml5.facemesh(video, () => {});
 
     facemesh.on("face", (results) => {
-      if (results.length > 0) {
+      if (results.length > 0 && ml5Active) {
         // Ponto do nariz
         const nose = results[0].scaledMesh[1];
         const noseX = nose[0];
@@ -128,7 +140,7 @@ function initSpeechRecognition() {
   );
 
   function gotResult(error, results) {
-    if (error) return;
+    if (error || !ml5Active) return;
 
     // Só reage a comandos relevantes
     if (results && results.length > 0) {
@@ -223,7 +235,88 @@ function animate() {
 
   // Atualizar cão pastor
   if (shepherdDog) {
-    shepherdDog.update(faceDetected, dogTargetX, dogTargetZ, deltaTime);
+    if (cameraMode === "firstPerson") {
+      const speed = 0.15;
+      const rotationSpeed = 0.05;
+
+      if (keys.ArrowUp) {
+        const direction = new THREE.Vector3(
+          Math.sin(shepherdDog.group.rotation.y),
+          0,
+          Math.cos(shepherdDog.group.rotation.y)
+        );
+        shepherdDog.group.position.add(direction.multiplyScalar(speed));
+        shepherdDog.isMoving = true;
+        shepherdDog.currentSpeed = speed;
+      }
+
+      if (keys.ArrowDown) {
+        const direction = new THREE.Vector3(
+          Math.sin(shepherdDog.group.rotation.y),
+          0,
+          Math.cos(shepherdDog.group.rotation.y)
+        );
+        shepherdDog.group.position.sub(direction.multiplyScalar(speed * 0.5));
+        shepherdDog.isMoving = true;
+        shepherdDog.currentSpeed = speed * 0.5;
+      }
+
+      if (keys.ArrowLeft) {
+        shepherdDog.group.rotation.y += rotationSpeed;
+      }
+
+      if (keys.ArrowRight) {
+        shepherdDog.group.rotation.y -= rotationSpeed;
+      }
+
+      if (!keys.ArrowUp && !keys.ArrowDown) {
+        shepherdDog.isMoving = false;
+        shepherdDog.currentSpeed = 0;
+      }
+
+      // Limitar área
+      const limitX = 45;
+      const limitZMin = -45;
+      const limitZMax = 20;
+      shepherdDog.group.position.x = Math.max(
+        -limitX,
+        Math.min(limitX, shepherdDog.group.position.x)
+      );
+      shepherdDog.group.position.z = Math.max(
+        limitZMin,
+        Math.min(limitZMax, shepherdDog.group.position.z)
+      );
+
+      // Atualizar animação
+      const timeScale = deltaTime * 60;
+      if (shepherdDog.isMoving) {
+        if (keys.ArrowUp && shepherdDog.currentSpeed > 0.08) {
+          shepherdDog.run(timeScale);
+        } else {
+          shepherdDog.walk(timeScale);
+        }
+      } else {
+        shepherdDog.idle(timeScale);
+      }
+
+      // Câmara à frente do cão
+      const dogPos = shepherdDog.group.position;
+      const dogRotation = shepherdDog.group.rotation.y;
+
+      camera.position.set(
+        dogPos.x + Math.sin(dogRotation) * 0.5,
+        dogPos.y + 2.2,
+        dogPos.z + Math.cos(dogRotation) * 0.5
+      );
+
+      camera.lookAt(
+        dogPos.x + Math.sin(dogRotation) * 10,
+        dogPos.y + 0.5,
+        dogPos.z + Math.cos(dogRotation) * 10
+      );
+    } else {
+      shepherdDog.update(faceDetected, dogTargetX, dogTargetZ, deltaTime);
+    }
   }
 
   // Atualizar ovelhas passando o cão como referência
@@ -235,6 +328,34 @@ function animate() {
 }
 
 animate();
+
+// Controlo de câmara e movimento por teclado
+window.addEventListener("keydown", (event) => {
+  if (event.key === "1") {
+    if (cameraMode === "default") {
+      cameraMode = "firstPerson";
+      ml5Active = false;
+      faceDetected = false;
+      controls.enabled = false;
+    } else {
+      cameraMode = "default";
+      ml5Active = true;
+      controls.enabled = true;
+      camera.position.set(0, 15, 25);
+      camera.lookAt(0, 0, 0);
+    }
+  }
+
+  if (keys.hasOwnProperty(event.key)) {
+    keys[event.key] = true;
+  }
+});
+
+window.addEventListener("keyup", (event) => {
+  if (keys.hasOwnProperty(event.key)) {
+    keys[event.key] = false;
+  }
+});
 
 // Resize Handler
 window.addEventListener("resize", () => {
