@@ -319,7 +319,7 @@ function animate() {
     }
   }
 
-  // Atualizar ovelhas passando o cão como referência
+  // Atualizar ovelhas
   sheepArray.forEach((sheep) => {
     const dogActive = faceDetected || cameraMode === "firstPerson";
     sheep.update(sheepArray, shepherdDog, isScared, dogActive, deltaTime);
@@ -330,7 +330,7 @@ function animate() {
 
 animate();
 
-// Controlo de câmara e movimento por teclado
+// teclado
 window.addEventListener("keydown", (event) => {
   if (event.key === "1") {
     if (cameraMode === "default") {
