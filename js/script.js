@@ -191,7 +191,7 @@ function initSpeechRecognition() {
 function triggerScare() {
   if (!isScared) {
     isScared = true;
-    scaredTimer = 180;
+    scaredTimer = 3;
 
     // Flash vermelho
     const flash = document.getElementById("flash-overlay");
@@ -204,12 +204,18 @@ function triggerScare() {
 
 initML5();
 
+let lastTime = performance.now();
+
 // Loop de renderização
 function animate() {
   requestAnimationFrame(animate);
 
+  const currentTime = performance.now();
+  const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1);
+  lastTime = currentTime;
+
   if (isScared) {
-    scaredTimer--;
+    scaredTimer -= deltaTime;
     if (scaredTimer <= 0) {
       isScared = false;
     }
@@ -217,12 +223,12 @@ function animate() {
 
   // Atualizar cão pastor
   if (shepherdDog) {
-    shepherdDog.update(faceDetected, dogTargetX, dogTargetZ);
+    shepherdDog.update(faceDetected, dogTargetX, dogTargetZ, deltaTime);
   }
 
   // Atualizar ovelhas passando o cão como referência
   sheepArray.forEach((sheep) => {
-    sheep.update(sheepArray, shepherdDog, isScared, faceDetected);
+    sheep.update(sheepArray, shepherdDog, isScared, faceDetected, deltaTime);
   });
 
   renderer.render(scene, camera);

@@ -191,8 +191,8 @@ export class ShepherdDog {
     this.bodyGroup.add(this.backLeftLeg);
   }
 
-  idle() {
-    this.walkCycle += 0.03;
+  idle(timeScale) {
+    this.walkCycle += 0.03 * timeScale;
     this.tongue.visible = false;
 
     // Pernas paradas
@@ -217,8 +217,8 @@ export class ShepherdDog {
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 1.5) * 0.3;
   }
 
-  walk() {
-    this.walkCycle += 0.12;
+  walk(timeScale) {
+    this.walkCycle += 0.12 * timeScale;
     this.tongue.visible = false;
 
     const legSwing = Math.sin(this.walkCycle) * 0.4;
@@ -244,8 +244,8 @@ export class ShepherdDog {
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 2) * 0.5;
   }
 
-  run() {
-    this.walkCycle += 0.25;
+  run(timeScale) {
+    this.walkCycle += 0.25 * timeScale;
     this.tongue.visible = true;
 
     const legSwing = Math.sin(this.walkCycle) * 0.7;
@@ -273,9 +273,10 @@ export class ShepherdDog {
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 3) * 0.4;
   }
 
-  update(faceDetected, dogTargetX, dogTargetZ) {
+  update(faceDetected, dogTargetX, dogTargetZ, deltaTime) {
+    const timeScale = deltaTime * 60;
+
     if (!faceDetected) {
-      this.idle();
       return;
     }
 
@@ -288,7 +289,7 @@ export class ShepherdDog {
     if (distance < 0.5) {
       this.isMoving = false;
       this.currentSpeed = 0;
-      this.idle();
+      this.idle(timeScale);
       return;
     }
 
@@ -299,16 +300,18 @@ export class ShepherdDog {
     let angleDiff = this.targetRotation - this.group.rotation.y;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.group.rotation.y += angleDiff * 0.08;
+    this.group.rotation.y += angleDiff * 0.08 * timeScale;
 
     // Velocidade baseada na distância
     const targetSpeed = Math.min(0.15, distance * 0.03);
-    this.currentSpeed += (targetSpeed - this.currentSpeed) * 0.1;
+    this.currentSpeed += (targetSpeed - this.currentSpeed) * 0.1 * timeScale;
 
     // Mover em frente
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(direction.multiplyScalar(this.currentSpeed));
+    this.group.position.add(
+      direction.multiplyScalar(this.currentSpeed * timeScale)
+    );
 
     // Limitar à área
     const limitX = 45;
@@ -326,9 +329,9 @@ export class ShepherdDog {
 
     // Animação baseada na velocidade
     if (this.currentSpeed > 0.08) {
-      this.run();
+      this.run(timeScale);
     } else {
-      this.walk();
+      this.walk(timeScale);
     }
   }
 }

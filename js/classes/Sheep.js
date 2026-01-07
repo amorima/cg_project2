@@ -158,8 +158,8 @@ export class Sheep {
     this.bodyGroup.add(this.backLeftLeg);
   }
 
-  walk() {
-    this.walkCycle += 0.06;
+  walk(timeScale) {
+    this.walkCycle += 0.06 * timeScale;
 
     const hipSwing = Math.sin(this.walkCycle) * 0.3;
 
@@ -183,8 +183,8 @@ export class Sheep {
     this.tailPivot.rotation.x = rad(30) + Math.sin(this.walkCycle * 0.8) * 0.1;
   }
 
-  idle() {
-    this.walkCycle += 0.02;
+  idle(timeScale) {
+    this.walkCycle += 0.02 * timeScale;
 
     // Pernas paradas
     this.frontRightLeg.rotation.x = 0;
@@ -209,8 +209,8 @@ export class Sheep {
     this.tailPivot.rotation.x = rad(30);
   }
 
-  run() {
-    this.walkCycle += 0.15;
+  run(timeScale) {
+    this.walkCycle += 0.15 * timeScale;
 
     const hipSwing = Math.sin(this.walkCycle) * 0.5;
 
@@ -233,10 +233,12 @@ export class Sheep {
     this.tailPivot.rotation.z = tailWag;
   }
 
-  update(sheepArray, dog, isScared, faceDetected) {
+  update(sheepArray, dog, isScared, faceDetected, deltaTime) {
+    const timeScale = deltaTime * 60;
+
     if (isScared) {
-      this.fleeFromCenter();
-      this.run();
+      this.fleeFromCenter(timeScale);
+      this.run(timeScale);
       this.keepInBounds();
       return;
     }
@@ -247,12 +249,12 @@ export class Sheep {
 
       // Fugir do cão se estiver perto
       if (distToDog < DOG_INFLUENCE_RADIUS) {
-        this.fleeFromDog(dog, distToDog, sheepArray);
+        this.fleeFromDog(dog, distToDog, sheepArray, timeScale);
 
         if (distToDog < DOG_FEAR_RADIUS) {
-          this.run();
+          this.run(timeScale);
         } else {
-          this.walk();
+          this.walk(timeScale);
         }
         this.keepInBounds();
         return;
@@ -260,18 +262,18 @@ export class Sheep {
     }
 
     if (this.isIdle) {
-      this.idleTimer++;
+      this.idleTimer += timeScale;
       if (this.idleTimer > this.idleDuration) {
         this.idleTimer = 0;
         this.idleDuration = 200 + Math.random() * 400;
         this.isIdle = false;
         this.headPivot.rotation.y = 0;
       }
-      this.idle();
+      this.idle(timeScale);
     } else {
-      this.avoidCollisions(sheepArray);
-      this.moveForward();
-      this.walk();
+      this.avoidCollisions(sheepArray, timeScale);
+      this.moveForward(timeScale);
+      this.walk(timeScale);
       this.headPivot.rotation.y = 0;
 
       if (Math.random() < 0.002) {
@@ -340,7 +342,7 @@ export class Sheep {
     this.group.position.add(direction.multiplyScalar(this.speed * 1.5));
   }
 
-  avoidCollisions(sheepArray) {
+  avoidCollisions(sheepArray, timeScale) {
     // Verificar distância a outras ovelhas
     for (const other of sheepArray) {
       if (other === this) continue;
@@ -365,13 +367,13 @@ export class Sheep {
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-    this.group.rotation.y += angleDiff * this.turnSpeed;
+    this.group.rotation.y += angleDiff * this.turnSpeed * timeScale;
   }
 
-  moveForward() {
+  moveForward(timeScale) {
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(direction.multiplyScalar(this.speed));
+    this.group.position.add(direction.multiplyScalar(this.speed * timeScale));
   }
 
   keepInBounds() {
@@ -384,7 +386,7 @@ export class Sheep {
     }
   }
 
-  fleeFromDog(dog, distToDog, sheepArray) {
+  fleeFromDog(dog, distToDog, sheepArray, timeScale) {
     // Direção oposta ao cão
     const fleeDir = new THREE.Vector3()
       .subVectors(this.group.position, dog.group.position)
@@ -437,7 +439,7 @@ export class Sheep {
     let angleDiff = this.targetRotation - this.group.rotation.y;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
     while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.group.rotation.y += angleDiff * 0.08;
+    this.group.rotation.y += angleDiff * 0.08 * timeScale;
 
     // Velocidade baseada na proximidade do cão
     const fleeSpeed = this.speed * (1 + urgency * 3);
@@ -445,10 +447,10 @@ export class Sheep {
     // Mover em frente
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(direction.multiplyScalar(fleeSpeed));
+    this.group.position.add(direction.multiplyScalar(fleeSpeed * timeScale));
   }
 
-  fleeFromCenter() {
+  fleeFromCenter(timeScale) {
     const fleeDir = new THREE.Vector3(
       this.group.position.x,
       0,
@@ -460,10 +462,10 @@ export class Sheep {
 
     this.targetRotation = Math.atan2(fleeDir.x, fleeDir.z);
     const angleDiff = this.targetRotation - this.group.rotation.y;
-    this.group.rotation.y += angleDiff * 0.1;
+    this.group.rotation.y += angleDiff * 0.1 * timeScale;
 
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(direction.multiplyScalar(0.15));
+    this.group.position.add(direction.multiplyScalar(0.15 * timeScale));
   }
 }
