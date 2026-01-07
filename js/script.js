@@ -321,7 +321,8 @@ function animate() {
 
   // Atualizar ovelhas passando o cão como referência
   sheepArray.forEach((sheep) => {
-    sheep.update(sheepArray, shepherdDog, isScared, faceDetected, deltaTime);
+    const dogActive = faceDetected || cameraMode === "firstPerson";
+    sheep.update(sheepArray, shepherdDog, isScared, dogActive, deltaTime);
   });
 
   renderer.render(scene, camera);
