@@ -1,5 +1,7 @@
-import * as THREE from "https://unpkg.com/three@0.126.0/build/three.module.js";
-import { OrbitControls } from "https://unpkg.com/three@0.126.0/examples/jsm/controls/OrbitControls.js";
+import * as THREE from "https://esm.sh/three@0.160.0";
+import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+import { ShepherdDog } from "./classes/ShepherdDog.js";
+import { Sheep } from "./classes/Sheep.js";
 
 // Setup da cena
 const scene = new THREE.Scene();
@@ -12,7 +14,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100
 );
-camera.position.set(0, 5, 10);
+camera.position.set(0, 15, 25);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -47,203 +49,344 @@ scene.add(ground);
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// Função para converter graus em radianos
-function rad(degrees) {
-  return degrees * (Math.PI / 180);
+// Estado global para ML5
+let faceX = 0.5;
+let faceY = 0.5;
+let faceDetected = false;
+let isScared = false;
+let scaredTimer = 0;
+let ml5Active = true;
+
+// Posição do cão pastor (controlado pela cara)
+let dogTargetX = 0;
+let dogTargetZ = 0;
+
+// Instância global do cão
+let shepherdDog = null;
+
+// Estado da câmara
+let cameraMode = "default"; // 'default' ou 'firstPerson'
+
+// Controlo de teclado para primeira pessoa
+const keys = {
+  ArrowUp: false,
+  ArrowDown: false,
+  ArrowLeft: false,
+  ArrowRight: false,
+};
+
+// Criar rebanho de ovelhas
+const sheepArray = [];
+const numSheep = 12;
+
+for (let i = 0; i < numSheep; i++) {
+  const x = (Math.random() - 0.5) * 30;
+  const z = (Math.random() - 0.5) * 30;
+  const isGrazing = Math.random() > 0.5;
+  const sheep = new Sheep(x, z, isGrazing);
+  sheepArray.push(sheep);
+  scene.add(sheep.group);
 }
 
-// Classe Sheep com articulações para animação de andar
-class Sheep {
-  constructor() {
-    this.group = new THREE.Group();
-    this.group.position.y = 1.8;
+// Criar cão pastor
+shepherdDog = new ShepherdDog();
+shepherdDog.group.position.set(0, 0, 15);
+scene.add(shepherdDog.group);
 
-    this.woolMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 1,
-      flatShading: true,
+// Inicializar webcam e ml5
+async function initML5() {
+  const video = document.getElementById("webcam");
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false,
     });
-    this.skinMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffaf8b,
-      roughness: 1,
-      flatShading: true,
-    });
-    this.darkMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4b4553,
-      roughness: 1,
-      flatShading: true,
-    });
+    video.srcObject = stream;
+    await video.play();
 
-    this.walkCycle = 0;
+    // Usa facemesh para obter ponto do nariz
+    const facemesh = ml5.facemesh(video, () => {});
 
-    this.drawBody();
-    this.drawHead();
-    this.drawTail();
-    this.drawLegs();
-  }
+    facemesh.on("face", (results) => {
+      if (results.length > 0 && ml5Active) {
+        // Ponto do nariz
+        const nose = results[0].scaledMesh[1];
 
-  drawBody() {
-    this.bodyGroup = new THREE.Group();
-    const bodyGeometry = new THREE.IcosahedronGeometry(1.7, 0);
-    const body = new THREE.Mesh(bodyGeometry, this.woolMaterial);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    this.bodyGroup.add(body);
-    this.group.add(this.bodyGroup);
-  }
+        // Robustez: Validar dimensões do vídeo
+        const vW = video.videoWidth || 640;
+        const vH = video.videoHeight || 480;
 
-  drawHead() {
-    this.headPivot = new THREE.Group();
-    this.headPivot.position.set(0, 0.65, 1.6);
-    this.headPivot.rotation.x = rad(-20);
-    this.bodyGroup.add(this.headPivot);
+        const targetFaceX = nose[0] / vW;
+        const targetFaceY = nose[1] / vH;
 
-    const foreheadGeometry = new THREE.BoxGeometry(0.7, 0.6, 0.7);
-    const forehead = new THREE.Mesh(foreheadGeometry, this.skinMaterial);
-    forehead.castShadow = true;
-    forehead.receiveShadow = true;
-    forehead.position.y = -0.15;
-    this.headPivot.add(forehead);
+        // Suavização (Lerp) para reduzir o tremor do nariz
+        // 0.2 significa que movemos 20% em direção ao alvo a cada frame
+        const lerpAmount = 0.2;
+        faceX += (targetFaceX - faceX) * lerpAmount;
+        faceY += (targetFaceY - faceY) * lerpAmount;
 
-    const faceGeometry = new THREE.CylinderGeometry(0.5, 0.15, 0.4, 4, 1);
-    const face = new THREE.Mesh(faceGeometry, this.skinMaterial);
-    face.castShadow = true;
-    face.receiveShadow = true;
-    face.position.y = -0.65;
-    face.rotation.y = rad(45);
-    this.headPivot.add(face);
+        faceDetected = true;
 
-    // Cabelo
-    const woolPositions = [
-      { x: 0, y: 0.15, z: 0.2, scale: 0.45 },
-      { x: -0.25, y: 0.1, z: 0.15, scale: 0.35 },
-      { x: 0.25, y: 0.1, z: 0.15, scale: 0.35 },
-      { x: -0.4, y: 0.1, z: 0.05, scale: 0.3 },
-      { x: 0.4, y: 0.1, z: 0.05, scale: 0.3 },
-    ];
-
-    woolPositions.forEach((pos) => {
-      const woolGeo = new THREE.IcosahedronGeometry(pos.scale, 0);
-      const woolMesh = new THREE.Mesh(woolGeo, this.woolMaterial);
-      woolMesh.position.set(pos.x, pos.y, pos.z);
-      woolMesh.castShadow = true;
-      woolMesh.receiveShadow = true;
-      this.headPivot.add(woolMesh);
+        // Transforma para coordenadas do mundo (posição alvo do cão)
+        // (0.5 - faceX) cria o efeito de espelho correto: Nariz à direita -> Cão à direita
+        dogTargetX = (0.5 - faceX) * 50;
+        // Mapeia Y (0-1) para Z (-45 a 20) para manter o cão visível
+        dogTargetZ = -45 + faceY * 65;
+      } else {
+        faceDetected = false;
+      }
     });
 
-    const rightEyeGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.06, 6);
-    const rightEye = new THREE.Mesh(rightEyeGeometry, this.darkMaterial);
-    rightEye.castShadow = true;
-    rightEye.receiveShadow = true;
-    rightEye.position.set(0.35, -0.48, 0.33);
-    rightEye.rotation.set(rad(130.8), 0, rad(-45));
-    this.headPivot.add(rightEye);
+    initSpeechRecognition();
+  } catch (error) {
+    console.log("Webcam não disponível:", error);
+  }
+}
 
-    const leftEye = rightEye.clone();
-    leftEye.position.x = -rightEye.position.x;
-    leftEye.rotation.z = -rightEye.rotation.z;
-    this.headPivot.add(leftEye);
+function initSpeechRecognition() {
+  // Deteta sons
+  const classifier = ml5.soundClassifier(
+    "SpeechCommands18w",
+    { probabilityThreshold: 0.75 },
+    () => {
+      classifier.classify(gotResult);
+    }
+  );
 
-    const rightEarGeometry = new THREE.BoxGeometry(0.12, 0.5, 0.3);
-    rightEarGeometry.translate(0, -0.25, 0);
-    this.rightEar = new THREE.Mesh(rightEarGeometry, this.skinMaterial);
-    this.rightEar.castShadow = true;
-    this.rightEar.receiveShadow = true;
-    this.rightEar.position.set(0.35, -0.12, -0.07);
-    this.rightEar.rotation.set(rad(20), 0, rad(50));
-    this.headPivot.add(this.rightEar);
+  function gotResult(error, results) {
+    if (error || !ml5Active) return;
 
-    this.leftEar = this.rightEar.clone();
-    this.leftEar.position.x = -this.rightEar.position.x;
-    this.leftEar.rotation.z = -this.rightEar.rotation.z;
-    this.headPivot.add(this.leftEar);
+    // Só reage a comandos relevantes
+    if (results && results.length > 0) {
+      const label = results[0].label.toLowerCase();
+      const confidence = results[0].confidence;
+
+      // Sons que assustam as ovelhas
+      if (
+        (label === "go" ||
+          label === "no" ||
+          label === "up" ||
+          label === "stop") &&
+        confidence > 0.75
+      ) {
+        triggerScare();
+      }
+    }
   }
 
-  drawTail() {
-    this.tailPivot = new THREE.Group();
-    this.tailPivot.position.set(0, 0.2, -1.6);
-    this.tailPivot.rotation.x = rad(30);
-    this.bodyGroup.add(this.tailPivot);
+  // Backup por reconhecimento de voz
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    const tailGeo = new THREE.IcosahedronGeometry(0.35, 0);
-    const tail = new THREE.Mesh(tailGeo, this.woolMaterial);
-    tail.position.y = -0.15;
-    tail.castShadow = true;
-    tail.receiveShadow = true;
-    this.tailPivot.add(tail);
-  }
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "pt-PT";
 
-  drawLegs() {
-    const createLeg = () => {
-      const legGeo = new THREE.CylinderGeometry(0.25, 0.18, 1.1, 4);
-      legGeo.translate(0, -0.55, 0);
-      const leg = new THREE.Mesh(legGeo, this.darkMaterial);
-      leg.castShadow = true;
-      leg.receiveShadow = true;
-      return leg;
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const text = event.results[i][0].transcript.toLowerCase();
+        console.log("Voz detetada:", text);
+        if (
+          text.includes("boo") ||
+          text.includes("bu") ||
+          text.includes("uh")
+        ) {
+          triggerScare();
+        }
+      }
     };
 
-    this.frontRightLeg = createLeg();
-    this.frontRightLeg.position.set(0.7, -0.8, 0.5);
-    this.bodyGroup.add(this.frontRightLeg);
+    recognition.onerror = (event) => {
+      if (event.error !== "no-speech") {
+        console.log("Erro de reconhecimento:", event.error);
+      }
+    };
 
-    this.frontLeftLeg = createLeg();
-    this.frontLeftLeg.position.set(-0.7, -0.8, 0.5);
-    this.bodyGroup.add(this.frontLeftLeg);
+    recognition.onend = () => {
+      setTimeout(() => recognition.start(), 100);
+    };
 
-    this.backRightLeg = createLeg();
-    this.backRightLeg.position.set(0.7, -0.8, -0.5);
-    this.bodyGroup.add(this.backRightLeg);
-
-    this.backLeftLeg = createLeg();
-    this.backLeftLeg.position.set(-0.7, -0.8, -0.5);
-    this.bodyGroup.add(this.backLeftLeg);
-  }
-
-  walk() {
-    this.walkCycle += 0.06;
-
-    const hipSwing = Math.sin(this.walkCycle) * 0.3;
-
-    this.frontRightLeg.rotation.x = hipSwing;
-    this.frontLeftLeg.rotation.x = -hipSwing;
-    this.backRightLeg.rotation.x = -hipSwing;
-    this.backLeftLeg.rotation.x = hipSwing;
-
-    const bodyBob = Math.sin(this.walkCycle * 2) * 0.08;
-    this.bodyGroup.position.y = bodyBob;
-
-    const headBob = Math.sin(this.walkCycle * 2) * 0.06;
-    this.headPivot.rotation.x = rad(-20) + headBob;
-
-    const earFlap = Math.sin(this.walkCycle * 1.5) * 0.15;
-    this.rightEar.rotation.z = rad(50) + earFlap;
-    this.leftEar.rotation.z = rad(-50) - earFlap;
-
-    const tailWag = Math.sin(this.walkCycle * 1.2) * 0.25;
-    this.tailPivot.rotation.z = tailWag;
-    this.tailPivot.rotation.x = rad(30) + Math.sin(this.walkCycle * 0.8) * 0.1;
+    try {
+      recognition.start();
+    } catch (e) {}
   }
 }
 
-// Criar a Ovelha e adicionar à cena
-const mySheep = new Sheep();
-scene.add(mySheep.group);
+function triggerScare() {
+  if (!isScared) {
+    isScared = true;
+    scaredTimer = 3;
+
+    // Flash vermelho
+    const flash = document.getElementById("flash-overlay");
+    flash.style.opacity = "0.6";
+    setTimeout(() => {
+      flash.style.opacity = "0";
+    }, 150);
+  }
+}
+
+initML5();
+
+let lastTime = performance.now();
 
 // Loop de renderização
 function animate() {
   requestAnimationFrame(animate);
 
-  mySheep.walk();
+  const currentTime = performance.now();
+  const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1);
+  lastTime = currentTime;
+
+  if (isScared) {
+    scaredTimer -= deltaTime;
+    if (scaredTimer <= 0) {
+      isScared = false;
+    }
+  }
+
+  // Atualizar cão pastor
+  if (shepherdDog) {
+    if (cameraMode === "firstPerson") {
+      const timeScale = deltaTime * 60;
+      const speed = 0.15;
+      const rotationSpeed = 0.05;
+
+      if (keys.ArrowUp) {
+        const direction = new THREE.Vector3(
+          Math.sin(shepherdDog.group.rotation.y),
+          0,
+          Math.cos(shepherdDog.group.rotation.y)
+        );
+        shepherdDog.group.position.add(
+          direction.multiplyScalar(speed * timeScale)
+        );
+        shepherdDog.isMoving = true;
+        shepherdDog.currentSpeed = speed;
+      }
+
+      if (keys.ArrowDown) {
+        const direction = new THREE.Vector3(
+          Math.sin(shepherdDog.group.rotation.y),
+          0,
+          Math.cos(shepherdDog.group.rotation.y)
+        );
+        shepherdDog.group.position.sub(
+          direction.multiplyScalar(speed * 0.5 * timeScale)
+        );
+        shepherdDog.isMoving = true;
+        shepherdDog.currentSpeed = speed * 0.5;
+      }
+
+      if (keys.ArrowLeft) {
+        shepherdDog.group.rotation.y += rotationSpeed * timeScale;
+      }
+
+      if (keys.ArrowRight) {
+        shepherdDog.group.rotation.y -= rotationSpeed * timeScale;
+      }
+
+      if (!keys.ArrowUp && !keys.ArrowDown) {
+        shepherdDog.isMoving = false;
+        shepherdDog.currentSpeed = 0;
+      }
+
+      // Limitar área
+      const limitX = 45;
+      const limitZMin = -45;
+      const limitZMax = 20;
+      shepherdDog.group.position.x = Math.max(
+        -limitX,
+        Math.min(limitX, shepherdDog.group.position.x)
+      );
+      shepherdDog.group.position.z = Math.max(
+        limitZMin,
+        Math.min(limitZMax, shepherdDog.group.position.z)
+      );
+
+      // Atualizar animação
+      if (shepherdDog.isMoving) {
+        if (keys.ArrowUp && shepherdDog.currentSpeed > 0.08) {
+          shepherdDog.run(timeScale);
+        } else {
+          shepherdDog.walk(timeScale);
+        }
+      } else {
+        shepherdDog.idle(timeScale);
+      }
+
+      // câmara à frente do cão
+      const dogPos = shepherdDog.group.position;
+      const dogRotation = shepherdDog.group.rotation.y;
+
+      camera.position.set(
+        dogPos.x + Math.sin(dogRotation) * -0.5,
+        dogPos.y + 2.7,
+        dogPos.z + Math.cos(dogRotation) * -0.5
+      );
+
+      camera.lookAt(
+        dogPos.x + Math.sin(dogRotation) * 10,
+        dogPos.y + 0.5,
+        dogPos.z + Math.cos(dogRotation) * 10
+      );
+    } else {
+      shepherdDog.update(faceDetected, dogTargetX, dogTargetZ, deltaTime);
+    }
+  }
+
+  // atualizar ovelhas
+  sheepArray.forEach((sheep) => {
+    const dogActive = faceDetected || cameraMode === "firstPerson";
+    sheep.update(sheepArray, shepherdDog, isScared, dogActive, deltaTime);
+  });
 
   renderer.render(scene, camera);
 }
 
 animate();
 
+// teclado
+window.addEventListener("keydown", (event) => {
+  if (
+    event.key === "1" ||
+    event.code === "Digit1" ||
+    event.code === "Numpad1"
+  ) {
+    if (cameraMode === "default") {
+      cameraMode = "firstPerson";
+      ml5Active = false;
+      faceDetected = false;
+      controls.enabled = false;
+    } else {
+      cameraMode = "default";
+      ml5Active = true;
+      controls.enabled = true;
+      camera.position.set(0, 15, 25);
+      camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+  }
+
+  if (keys.hasOwnProperty(event.key)) {
+    keys[event.key] = true;
+  }
+});
+
+window.addEventListener("keyup", (event) => {
+  if (keys.hasOwnProperty(event.key)) {
+    keys[event.key] = false;
+  }
+});
+
 // Resize Handler
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+
   renderer.setSize(window.innerWidth, window.innerHeight);
 });

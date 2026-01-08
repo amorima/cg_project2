@@ -2,10 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Projeto MEH!</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
   </head>
   <body>
-    <script type="module" src="js/script.js"></script>
+    <video id="webcam" autoplay playsinline style="display: none"></video>
+    <div
+      id="flash-overlay"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: red;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 1000;
+        transition: opacity 0.1s;
+      "
+    ></div>
+    <script type="module" src="./js/script.js"></script>
   </body>
 </html>
