@@ -236,6 +236,7 @@ function animate() {
   // Atualizar cão pastor
   if (shepherdDog) {
     if (cameraMode === "firstPerson") {
+      const timeScale = deltaTime * 60;
       const speed = 0.15;
       const rotationSpeed = 0.05;
 
@@ -245,7 +246,9 @@ function animate() {
           0,
           Math.cos(shepherdDog.group.rotation.y)
         );
-        shepherdDog.group.position.add(direction.multiplyScalar(speed));
+        shepherdDog.group.position.add(
+          direction.multiplyScalar(speed * timeScale)
+        );
         shepherdDog.isMoving = true;
         shepherdDog.currentSpeed = speed;
       }
@@ -256,17 +259,19 @@ function animate() {
           0,
           Math.cos(shepherdDog.group.rotation.y)
         );
-        shepherdDog.group.position.sub(direction.multiplyScalar(speed * 0.5));
+        shepherdDog.group.position.sub(
+          direction.multiplyScalar(speed * 0.5 * timeScale)
+        );
         shepherdDog.isMoving = true;
         shepherdDog.currentSpeed = speed * 0.5;
       }
 
       if (keys.ArrowLeft) {
-        shepherdDog.group.rotation.y += rotationSpeed;
+        shepherdDog.group.rotation.y += rotationSpeed * timeScale;
       }
 
       if (keys.ArrowRight) {
-        shepherdDog.group.rotation.y -= rotationSpeed;
+        shepherdDog.group.rotation.y -= rotationSpeed * timeScale;
       }
 
       if (!keys.ArrowUp && !keys.ArrowDown) {
@@ -288,7 +293,6 @@ function animate() {
       );
 
       // Atualizar animação
-      const timeScale = deltaTime * 60;
       if (shepherdDog.isMoving) {
         if (keys.ArrowUp && shepherdDog.currentSpeed > 0.08) {
           shepherdDog.run(timeScale);
@@ -299,14 +303,14 @@ function animate() {
         shepherdDog.idle(timeScale);
       }
 
-      // Câmara à frente do cão
+      // câmara à frente do cão
       const dogPos = shepherdDog.group.position;
       const dogRotation = shepherdDog.group.rotation.y;
 
       camera.position.set(
-        dogPos.x + Math.sin(dogRotation) * 0.5,
-        dogPos.y + 2.2,
-        dogPos.z + Math.cos(dogRotation) * 0.5
+        dogPos.x + Math.sin(dogRotation) * -0.5,
+        dogPos.y + 2.7,
+        dogPos.z + Math.cos(dogRotation) * -0.5
       );
 
       camera.lookAt(
@@ -319,7 +323,7 @@ function animate() {
     }
   }
 
-  // Atualizar ovelhas
+  // atualizar ovelhas
   sheepArray.forEach((sheep) => {
     const dogActive = faceDetected || cameraMode === "firstPerson";
     sheep.update(sheepArray, shepherdDog, isScared, dogActive, deltaTime);
@@ -332,7 +336,11 @@ animate();
 
 // teclado
 window.addEventListener("keydown", (event) => {
-  if (event.key === "1") {
+  if (
+    event.key === "1" ||
+    event.code === "Digit1" ||
+    event.code === "Numpad1"
+  ) {
     if (cameraMode === "default") {
       cameraMode = "firstPerson";
       ml5Active = false;
@@ -344,6 +352,8 @@ window.addEventListener("keydown", (event) => {
       controls.enabled = true;
       camera.position.set(0, 15, 25);
       camera.lookAt(0, 0, 0);
+      controls.target.set(0, 0, 0);
+      controls.update();
     }
   }
 
