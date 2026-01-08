@@ -8,7 +8,12 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color("#87ceeb");
 scene.fog = new THREE.Fog("#87ceeb", 30, 150);
 
-const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  100
+);
 camera.position.set(0, 15, 25);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -107,14 +112,24 @@ async function initML5() {
       if (results.length > 0 && ml5Active) {
         // Ponto do nariz
         const nose = results[0].scaledMesh[1];
-        const noseX = nose[0];
-        const noseY = nose[1];
 
-        faceX = noseX / video.videoWidth;
-        faceY = noseY / video.videoHeight;
+        // Robustez: Validar dimensões do vídeo
+        const vW = video.videoWidth || 640;
+        const vH = video.videoHeight || 480;
+
+        const targetFaceX = nose[0] / vW;
+        const targetFaceY = nose[1] / vH;
+
+        // Suavização (Lerp) para reduzir o tremor do nariz
+        // 0.2 significa que movemos 20% em direção ao alvo a cada frame
+        const lerpAmount = 0.2;
+        faceX += (targetFaceX - faceX) * lerpAmount;
+        faceY += (targetFaceY - faceY) * lerpAmount;
+
         faceDetected = true;
 
         // Transforma para coordenadas do mundo (posição alvo do cão)
+        // (0.5 - faceX) cria o efeito de espelho correto: Nariz à direita -> Cão à direita
         dogTargetX = (0.5 - faceX) * 50;
         // Mapeia Y (0-1) para Z (-45 a 20) para manter o cão visível
         dogTargetZ = -45 + faceY * 65;
@@ -370,18 +385,8 @@ window.addEventListener("keyup", (event) => {
 
 // Resize Handler
 window.addEventListener("resize", () => {
-  // Manter aspect ratio 16:9
-  camera.aspect = 16 / 9;
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
-  // Calcular tamanho do renderer para 16:9
-  let width = window.innerWidth;
-  let height = window.innerWidth / (16 / 9);
-
-  if (height > window.innerHeight) {
-    height = window.innerHeight;
-    width = window.innerHeight * (16 / 9);
-  }
-
-  renderer.setSize(width, height);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
