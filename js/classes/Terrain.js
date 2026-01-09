@@ -29,12 +29,34 @@ export class Terrain {
               child.receiveShadow = true;
               this.collidableMeshes.push(child);
 
+              // suavidade da geometria
+              if (child.geometry) {
+                child.geometry.computeVertexNormals();
+              }
+
               if (child.material) {
+                child.material.flatShading = false;
                 child.material.needsUpdate = true;
+
+                // qualidade das texturas
+                [
+                  "map",
+                  "normalMap",
+                  "roughnessMap",
+                  "metalnessMap",
+                  "aoMap",
+                ].forEach((key) => {
+                  if (child.material[key]) {
+                    child.material[key].anisotropy = 16;
+                    child.material[key].minFilter =
+                      THREE.LinearMipmapLinearFilter;
+                    child.material[key].magFilter = THREE.LinearFilter;
+                    child.material[key].needsUpdate = true;
+                  }
+                });
 
                 if (child.material.map) {
                   child.material.map.colorSpace = THREE.SRGBColorSpace;
-                  child.material.map.needsUpdate = true;
                 }
 
                 if (!child.material.color) {

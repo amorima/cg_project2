@@ -12,7 +12,7 @@ canvas.width = 1;
 canvas.height = 32;
 const context = canvas.getContext("2d");
 const gradient = context.createLinearGradient(0, 0, 0, 32);
-gradient.addColorStop(0, "#4e84c4"); 
+gradient.addColorStop(0, "#4e84c4");
 gradient.addColorStop(1, "#87ceeb");
 context.fillStyle = gradient;
 context.fillRect(0, 0, 1, 32);
@@ -32,18 +32,20 @@ camera.position.set(-15, 19, 45);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Melhora nitidez em ecrãs HD
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight("#ffffff", 0.8);
+const ambientLight = new THREE.AmbientLight("#ffffff", 1);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight("#ffffff", 1.0);
+const dirLight = new THREE.DirectionalLight("#ffffff", 4.5);
 dirLight.position.set(10, 20, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.bias = -0.0005;
 dirLight.shadow.camera.near = 1;
 dirLight.shadow.camera.far = 80;
 dirLight.shadow.camera.left = -30;
@@ -428,4 +430,5 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
 
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
