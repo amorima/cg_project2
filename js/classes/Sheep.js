@@ -2,7 +2,7 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 import { rad } from "../utils.js";
 
 // Raio de influência do cão sobre as ovelhas
-const DOG_INFLUENCE_RADIUS = 12;
+const DOG_INFLUENCE_RADIUS = 20;
 const DOG_FEAR_RADIUS = 6;
 
 export class Sheep {

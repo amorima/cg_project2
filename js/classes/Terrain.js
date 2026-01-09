@@ -28,25 +28,12 @@ export class Terrain {
               child.castShadow = true;
               child.receiveShadow = true;
               this.collidableMeshes.push(child);
-
-              // Resolve problema de materiais escuros (fallback)
-              if (child.material) {
-                child.material.side = THREE.DoubleSide;
-                // Manter o map se existir, mas forçar comportamento não-metálico se estiver preto
-                child.material.metalness = 0;
-                // Se o roughness for 0 pode parecer espelho preto
-                if (child.material.roughness < 0.5)
-                  child.material.roughness = 0.8;
-              }
             }
           });
 
           // Ajustar escala gigantesca para compensar o tamanho original minúsculo
           const scale = 20; // Ajustado conforme feedback
           this.model.scale.set(scale, scale, scale);
-
-          // Baixar um pouco se estiver a flutuar
-          this.model.position.y = -10;
 
           this.scene.add(this.model);
           this.loaded = true;
