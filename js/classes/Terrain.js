@@ -129,9 +129,15 @@ export class Terrain {
     const distance = Math.sqrt(
       (nextX - currentX) ** 2 + (nextZ - currentZ) ** 2
     );
+
+    // Ignorar pequenas variações de altura
+    if (Math.abs(diff) < 2.5) {
+      return { allowed: true, height: nextHeight };
+    }
+
     const slope = distance > 0 ? Math.abs(diff) / distance : 0;
 
-    if (slope > 4.0 || diff > 6.0 || diff < -6.0) {
+    if (slope > 8.0 || diff > 12.0 || diff < -12.0) {
       return { allowed: false, height: currentHeight };
     }
 
