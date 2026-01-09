@@ -295,7 +295,6 @@ export class ShepherdDog {
       if (this.ignoreCollisionTimer <= 0) {
         this.ignoreCollision = false;
         this.stuckTimer = 0;
-        console.log("Cão: Colisões reativadas");
       }
     }
 
@@ -414,7 +413,6 @@ export class ShepherdDog {
 
           // Apenas ativar se NÃO estiver nos limites
           if (!isAtBoundary) {
-            console.log("Cão preso! Desativando colisões por 2 segundos...");
             this.ignoreCollision = true;
             this.ignoreCollisionTimer = 2.0;
             this.stuckTimer = 0;

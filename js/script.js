@@ -72,6 +72,46 @@ muteBtn.addEventListener("click", () => {
   muteBtn.textContent = isMuted ? "🔊" : "🔇";
 });
 
+// Botão de Microfone
+const micBtn = document.createElement("button");
+micBtn.textContent = "🎙️";
+Object.assign(micBtn.style, {
+  position: "absolute",
+  top: "20px",
+  right: "70px",
+  zIndex: "1000",
+  background: "none",
+  border: "none",
+  color: "white",
+  fontSize: "30px",
+  cursor: "pointer",
+});
+document.body.appendChild(micBtn);
+
+let audioRecognitionActive = true;
+let audioRecognizer = null;
+let audioCallback = null;
+
+micBtn.addEventListener("click", () => {
+  audioRecognitionActive = !audioRecognitionActive;
+  micBtn.textContent = audioRecognitionActive ? "🎙️" : "🚫";
+  console.log(
+    "[Audio] Microfone:",
+    audioRecognitionActive ? "ATIVO" : "DESATIVADO"
+  );
+
+  if (!audioRecognitionActive && audioRecognizer) {
+    audioRecognizer.stopListening();
+  } else if (audioRecognitionActive && audioRecognizer) {
+    audioRecognizer.listen(audioCallback, {
+      includeSpectrogram: true,
+      probabilityThreshold: 0.5,
+      invokeCallbackOnNoiseAndUnknown: true,
+      overlapFactor: 0.5,
+    });
+  }
+});
+
 const ambientLight = new THREE.AmbientLight("#ffffff", 0.9);
 scene.add(ambientLight);
 
@@ -206,81 +246,89 @@ async function initML5() {
       }
     });
 
-    initSpeechRecognition();
+    initTeachableMachine();
   } catch (error) {}
 }
 
-function initSpeechRecognition() {
-  const classifier = ml5.soundClassifier(
-    "SpeechCommands18w",
-    { probabilityThreshold: 0.75 },
-    () => {
-      classifier.classify(gotResult);
-    }
-  );
+async function initTeachableMachine() {
+  try {
+    // Construir URL absoluta baseada na localização atual
+    const baseURL =
+      window.location.origin +
+      window.location.pathname.replace(/\/[^/]*$/, "/");
+    const URL = baseURL + "assets/teachable-machine/";
 
-  function gotResult(error, results) {
-    if (error || !ml5Active) return;
+    // Criar o reconhecedor de áudio
+    const checkpointURL = URL + "model.json";
+    const metadataURL = URL + "metadata.json";
 
-    // Reage apenas a comandos relevantes
-    if (results && results.length > 0) {
-      const label = results[0].label.toLowerCase();
-      const confidence = results[0].confidence;
+    const recognizer = speechCommands.create(
+      "BROWSER_FFT",
+      undefined,
+      checkpointURL,
+      metadataURL
+    );
 
-      // Comandos que provocam reação
-      if (
-        (label === "go" ||
-          label === "no" ||
-          label === "up" ||
-          label === "stop") &&
-        confidence > 0.75
-      ) {
-        triggerScare();
-      }
-    }
-  }
+    // Garantir que o modelo está carregado
+    await recognizer.ensureModelLoaded();
 
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+    const classLabels = recognizer.wordLabels();
+    console.log("[Audio] Sistema ativo. Classes:", classLabels);
 
-  if (SpeechRecognition) {
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.lang = "pt-PT";
+    // Guardar recognizer globalmente
+    audioRecognizer = recognizer;
 
-    recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const text = event.results[i][0].transcript.toLowerCase();
-        if (
-          text.includes("boo") ||
-          text.includes("bu") ||
-          text.includes("uh")
-        ) {
-          triggerScare();
+    // Definir callback de áudio
+    audioCallback = (result) => {
+      if (!audioRecognitionActive) return;
+
+      const scores = result.scores;
+
+      // Encontrar a classe com maior probabilidade
+      let maxScore = 0;
+      let maxIndex = 0;
+      for (let i = 0; i < scores.length; i++) {
+        if (scores[i] > maxScore) {
+          maxScore = scores[i];
+          maxIndex = i;
         }
       }
-    };
 
-    recognition.onerror = (event) => {
-      if (event.error !== "no-speech") {
+      const predictedClass = classLabels[maxIndex];
+
+      // Debug de áudio
+      console.log(`[Audio] ${predictedClass}: ${(maxScore * 100).toFixed(1)}%`);
+
+      // Verificar se NÃO é "Background Noise" E ultrapassa 97%
+      if (
+        maxScore > 0.9 &&
+        predictedClass !== "Background Noise" &&
+        predictedClass !== "_background_noise_"
+      ) {
+        console.log("🔊 SOM DETETADO! Ativando triggerScare()...");
+        triggerScare();
+        console.log("isScared:", isScared, "| scaredTimer:", scaredTimer);
       }
     };
 
-    recognition.onend = () => {
-      setTimeout(() => recognition.start(), 100);
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {}
+    // Iniciar reconhecimento contínuo
+    recognizer.listen(audioCallback, {
+      includeSpectrogram: true,
+      probabilityThreshold: 0.5, // Reduzido de 0.75 para 0.5
+      invokeCallbackOnNoiseAndUnknown: true,
+      overlapFactor: 0.5,
+    });
+  } catch (error) {
+    console.error("[Audio] Erro ao inicializar:", error);
   }
 }
 
 function triggerScare() {
+  console.log("[Audio] triggerScare() chamado! isScared antes:", isScared);
   if (!isScared) {
     isScared = true;
     scaredTimer = 3;
+    console.log("[Audio] Ovelhas agora estão assustadas por 3 segundos");
 
     const flash = document.getElementById("flash-overlay");
     flash.style.opacity = "0.6";

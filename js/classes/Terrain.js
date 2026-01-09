@@ -75,12 +75,9 @@ export class Terrain {
 
           this.scene.add(this.model);
           this.loaded = true;
-          console.log("Terreno carregado com sucesso!");
           resolve(this.model);
         },
-        (xhr) => {
-          console.log((xhr.loaded / xhr.total) * 100 + "% carregado");
-        },
+        undefined,
         (error) => {
           console.error("Erro ao carregar o terreno:", error);
           reject(error);

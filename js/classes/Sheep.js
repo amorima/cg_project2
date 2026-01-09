@@ -280,7 +280,6 @@ export class Sheep {
       if (this.ignoreCollisionTimer <= 0) {
         this.ignoreCollision = false;
         this.stuckTimer = 0;
-        console.log("Ovelha: Colisões reativadas");
       }
     }
 
@@ -421,7 +420,6 @@ export class Sheep {
 
           // Apenas ativar se não estiver nos limites do mapa
           if (!isAtBoundary) {
-            console.log("Ovelha presa! Desativando colisões por 2 segundos...");
             this.ignoreCollision = true;
             this.ignoreCollisionTimer = 2.0;
             this.stuckTimer = 0;
