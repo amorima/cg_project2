@@ -5,14 +5,28 @@ import { Sheep } from "./classes/Sheep.js";
 import { Terrain } from "./classes/Terrain.js";
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color("#87ceeb");
-scene.fog = new THREE.Fog("#87ceeb", 30, 150);
+
+// gradiente céu
+const canvas = document.createElement("canvas");
+canvas.width = 1;
+canvas.height = 32;
+const context = canvas.getContext("2d");
+const gradient = context.createLinearGradient(0, 0, 0, 32);
+gradient.addColorStop(0, "#4e84c4"); 
+gradient.addColorStop(1, "#87ceeb");
+context.fillStyle = gradient;
+context.fillRect(0, 0, 1, 32);
+const skyTexture = new THREE.CanvasTexture(canvas);
+skyTexture.colorSpace = THREE.SRGBColorSpace;
+scene.background = skyTexture;
+
+scene.fog = new THREE.Fog("#87ceeb", 30, 500);
 
 const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
   0.1,
-  100
+  1000
 );
 camera.position.set(-15, 19, 45);
 
