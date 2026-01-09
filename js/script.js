@@ -29,6 +29,19 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.set(-15, 19, 45);
 
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+const backgroundSound = new THREE.Audio(listener);
+backgroundSound.setVolume(0.5);
+
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load("assets/sound/background.mp3", function (buffer) {
+  backgroundSound.setBuffer(buffer);
+  backgroundSound.setLoop(true);
+  backgroundSound.play();
+});
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -36,6 +49,28 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
+
+// Botão de Mute
+const muteBtn = document.createElement("button");
+muteBtn.textContent = "🔊";
+Object.assign(muteBtn.style, {
+  position: "absolute",
+  top: "20px",
+  right: "20px",
+  zIndex: "1000",
+  background: "none",
+  border: "none",
+  color: "white",
+  fontSize: "30px",
+  cursor: "pointer",
+});
+document.body.appendChild(muteBtn);
+
+muteBtn.addEventListener("click", () => {
+  const isMuted = backgroundSound.getVolume() === 0;
+  backgroundSound.setVolume(isMuted ? 0.5 : 0);
+  muteBtn.textContent = isMuted ? "🔊" : "🔇";
+});
 
 const ambientLight = new THREE.AmbientLight("#ffffff", 0.9);
 scene.add(ambientLight);
