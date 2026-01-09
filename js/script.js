@@ -6,7 +6,6 @@ import { Terrain } from "./classes/Terrain.js";
 
 const scene = new THREE.Scene();
 
-// gradiente céu
 const canvas = document.createElement("canvas");
 canvas.width = 1;
 canvas.height = 32;
@@ -32,7 +31,7 @@ camera.position.set(-15, 19, 45);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Melhora nitidez em ecrãs HD
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -92,12 +91,10 @@ for (let i = 0; i < numSheep; i++) {
   scene.add(sheep.group);
 }
 
-// Criar cão pastor
 shepherdDog = new ShepherdDog();
 shepherdDog.group.position.set(0, 0, 15);
 scene.add(shepherdDog.group);
 
-// Inicializar webcam e ml5
 async function initML5() {
   const video = document.getElementById("webcam");
 
@@ -114,26 +111,23 @@ async function initML5() {
 
     facemesh.on("face", (results) => {
       if (results.length > 0 && ml5Active) {
-        // Ponto do nariz
         const nose = results[0].scaledMesh[1];
 
-        // Robustez: Validar dimensões do vídeo
+        // Validar dimensões do vídeo
         const vW = video.videoWidth || 640;
         const vH = video.videoHeight || 480;
 
         const targetFaceX = nose[0] / vW;
         const targetFaceY = nose[1] / vH;
 
-        // Suavização (Lerp) para reduzir o tremor do nariz
-        // 0.2 significa que movemos 20% em direção ao alvo a cada frame
+        // Suavização (lerp) para reduzir o tremor do nariz
         const lerpAmount = 0.2;
         faceX += (targetFaceX - faceX) * lerpAmount;
         faceY += (targetFaceY - faceY) * lerpAmount;
 
         faceDetected = true;
 
-        // Transforma para coordenadas do mundo (posição alvo do cão)
-        // (0.5 - faceX) cria o efeito de espelho correto: Nariz à direita -> Cão à direita
+        // Transformar coordenadas de rosto para posição alvo do cão
         dogTargetX = (0.5 - faceX) * 50;
         // Mapeia Y (0-1) para Z (-45 a 20) para manter o cão visível
         dogTargetZ = -45 + faceY * 65;
@@ -149,7 +143,6 @@ async function initML5() {
 }
 
 function initSpeechRecognition() {
-  // Deteta sons
   const classifier = ml5.soundClassifier(
     "SpeechCommands18w",
     { probabilityThreshold: 0.75 },
@@ -161,12 +154,12 @@ function initSpeechRecognition() {
   function gotResult(error, results) {
     if (error || !ml5Active) return;
 
-    // Só reage a comandos relevantes
+    // Reage apenas a comandos relevantes
     if (results && results.length > 0) {
       const label = results[0].label.toLowerCase();
       const confidence = results[0].confidence;
 
-      // Sons que assustam as ovelhas
+      // Comandos que provocam reação
       if (
         (label === "go" ||
           label === "no" ||
@@ -179,7 +172,6 @@ function initSpeechRecognition() {
     }
   }
 
-  // Backup por reconhecimento de voz
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -224,7 +216,6 @@ function triggerScare() {
     isScared = true;
     scaredTimer = 3;
 
-    // Flash vermelho
     const flash = document.getElementById("flash-overlay");
     flash.style.opacity = "0.6";
     setTimeout(() => {
@@ -237,7 +228,6 @@ initML5();
 
 let lastTime = performance.now();
 
-// Loop de renderização
 function animate() {
   requestAnimationFrame(animate);
 
@@ -338,7 +328,7 @@ function animate() {
         shepherdDog.idle(timeScale);
       }
 
-      // câmara à frente do cão
+      // Câmara à frente do cão
       const dogPos = shepherdDog.group.position;
       const dogRotation = shepherdDog.group.rotation.y;
 
@@ -364,7 +354,7 @@ function animate() {
     }
   }
 
-  // atualizar ovelhas
+  // Atualizar ovelhas
   sheepArray.forEach((sheep) => {
     const dogActive = faceDetected || cameraMode === "firstPerson";
     sheep.update(
@@ -382,7 +372,6 @@ function animate() {
 
 animate();
 
-// teclado
 window.addEventListener("keydown", (event) => {
   if (
     event.key === "1" ||
@@ -424,7 +413,6 @@ window.addEventListener("keyup", (event) => {
   }
 });
 
-// Resize Handler
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();

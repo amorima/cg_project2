@@ -33,6 +33,7 @@ export class Sheep {
     this.targetRotation = this.group.rotation.y;
     this.idleTimer = 0;
     this.idleDuration = 200 + Math.random() * 400;
+    this.collisionTimer = 0;
 
     this.drawBody();
     this.drawHead();
@@ -265,6 +266,30 @@ export class Sheep {
 
   update(sheepArray, dog, isScared, faceDetected, deltaTime, terrain) {
     const timeScale = deltaTime * 60;
+
+    // Se colidiu recentemente, roda no lugar antes de tentar andar de novo
+    if (this.collisionTimer > 0) {
+      this.collisionTimer -= deltaTime;
+
+      // Rodar suavemente para a nova direção
+      let angleDiff = this.targetRotation - this.group.rotation.y;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      this.group.rotation.y += angleDiff * 0.1 * timeScale;
+
+      this.walk(timeScale * 0.5); // Animação de passo no lugar
+
+      // Manter altura correta
+      if (terrain) {
+        const h = terrain.getHeightAt(
+          this.group.position.x,
+          this.group.position.z
+        );
+        if (h !== null) this.group.position.y = h + 1.8;
+      }
+      return; // Não executa movimento de translação
+    }
+
     const oldPos = this.group.position.clone();
 
     // Helper para verificar terreno
@@ -279,7 +304,12 @@ export class Sheep {
         if (moveCheck.allowed) {
           this.group.position.y = moveCheck.height + 1.8;
         } else {
-          this.group.position.copy(oldPos); // Colisão: reverte movimento
+          // Colisão detetada: reverte movimento E muda de direção
+          this.group.position.copy(oldPos);
+
+          // Roda entre 90 a 270 graus para fugir do obstáculo
+          this.targetRotation += Math.PI / 2 + Math.random() * Math.PI;
+          this.collisionTimer = 0.5;
         }
       }
     };

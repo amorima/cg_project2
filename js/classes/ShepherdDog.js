@@ -82,7 +82,6 @@ export class ShepherdDog {
     this.bodyGroup = new THREE.Group();
     this.bodyGroup.position.y = 1.2;
 
-    // Corpo simplificado (cápsula única)
     const bodyGeo = new THREE.CapsuleGeometry(0.7, 1.5, 4, 8);
     const body = new THREE.Mesh(bodyGeo, this.furMaterial);
     body.rotation.x = Math.PI / 2;
@@ -98,14 +97,12 @@ export class ShepherdDog {
     this.headPivot.position.set(0, 0.3, 1.3);
     this.bodyGroup.add(this.headPivot);
 
-    // Cabeça principal
     const headGeo = new THREE.SphereGeometry(0.55, 8, 6);
     const head = new THREE.Mesh(headGeo, this.furMaterial);
     head.scale.set(1, 0.9, 1);
     head.castShadow = true;
     this.headPivot.add(head);
 
-    // Focinho
     const snoutGeo = new THREE.ConeGeometry(0.25, 0.6, 6);
     const snout = new THREE.Mesh(snoutGeo, this.lightFurMaterial);
     snout.rotation.x = -Math.PI / 2;
@@ -113,13 +110,11 @@ export class ShepherdDog {
     snout.castShadow = true;
     this.headPivot.add(snout);
 
-    // Nariz
     const noseGeo = new THREE.SphereGeometry(0.1, 6, 6);
     const nose = new THREE.Mesh(noseGeo, this.noseMaterial);
     nose.position.set(0, -0.05, 0.8);
     this.headPivot.add(nose);
 
-    // Olhos
     const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
 
     const rightEye = new THREE.Mesh(eyeGeo, this.eyeMaterial);
@@ -130,7 +125,6 @@ export class ShepherdDog {
     leftEye.position.set(-0.22, 0.1, 0.35);
     this.headPivot.add(leftEye);
 
-    // Brilho dos olhos
     const eyeShineGeo = new THREE.SphereGeometry(0.03, 6, 6);
     const eyeShineMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -146,7 +140,6 @@ export class ShepherdDog {
     leftShine.position.set(-0.2, 0.12, 0.42);
     this.headPivot.add(leftShine);
 
-    // Orelhas
     const earGeo = new THREE.ConeGeometry(0.18, 0.4, 4);
 
     this.rightEar = new THREE.Mesh(earGeo, this.furMaterial);
@@ -161,7 +154,6 @@ export class ShepherdDog {
     this.leftEar.castShadow = true;
     this.headPivot.add(this.leftEar);
 
-    // Língua (visível quando corre)
     this.tongue = new THREE.Group();
     const tongueGeo = new THREE.BoxGeometry(0.12, 0.02, 0.3);
     const tongueMesh = new THREE.Mesh(tongueGeo, this.tongueMaterial);
@@ -178,7 +170,6 @@ export class ShepherdDog {
     this.tailPivot.position.set(0, 0.2, -1.2);
     this.bodyGroup.add(this.tailPivot);
 
-    // Cauda curvada
     const tailGeo = new THREE.CapsuleGeometry(0.12, 0.6, 4, 6);
     const tail = new THREE.Mesh(tailGeo, this.furMaterial);
     tail.position.y = 0.35;
@@ -186,7 +177,6 @@ export class ShepherdDog {
     tail.castShadow = true;
     this.tailPivot.add(tail);
 
-    // Ponta da cauda (branca)
     const tailTipGeo = new THREE.SphereGeometry(0.15, 6, 6);
     const tailTip = new THREE.Mesh(tailTipGeo, this.whiteFurMaterial);
     tailTip.position.y = 0.7;
@@ -195,7 +185,6 @@ export class ShepherdDog {
 
   drawLegs() {
     const createLeg = () => {
-      // Cria uma perna cilíndrica
       const legGeo = new THREE.CylinderGeometry(0.15, 0.12, 0.9, 6);
       legGeo.translate(0, -0.45, 0);
       const leg = new THREE.Mesh(legGeo, this.furMaterial);
@@ -225,24 +214,19 @@ export class ShepherdDog {
     this.walkCycle += 0.03 * timeScale;
     this.tongue.visible = false;
 
-    // Pernas paradas
     this.frontRightLeg.rotation.x = 0;
     this.frontLeftLeg.rotation.x = 0;
     this.backRightLeg.rotation.x = 0;
     this.backLeftLeg.rotation.x = 0;
 
-    // Corpo estável
     this.bodyGroup.position.y = 1.2;
 
-    // Cabeça com leve movimento
     this.headPivot.rotation.x = Math.sin(this.walkCycle * 0.5) * 0.05;
 
-    // Orelhas atentas
     const earTwitch = Math.sin(this.walkCycle * 2) * 0.05;
     this.rightEar.rotation.z = -0.25 + earTwitch;
     this.leftEar.rotation.z = 0.25 - earTwitch;
 
-    // Cauda abanando suavemente
     this.tailPivot.rotation.x = -0.5 + Math.sin(this.walkCycle) * 0.2;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 1.5) * 0.3;
   }
@@ -258,18 +242,14 @@ export class ShepherdDog {
     this.backRightLeg.rotation.x = -legSwing;
     this.backLeftLeg.rotation.x = legSwing;
 
-    // Corpo com leve balanço
     this.bodyGroup.position.y = 1.2 + Math.sin(this.walkCycle * 2) * 0.05;
 
-    // Cabeça acompanha
     this.headPivot.rotation.x = Math.sin(this.walkCycle * 2) * 0.08;
 
-    // Orelhas em movimento
     const earBounce = Math.sin(this.walkCycle * 2) * 0.08;
     this.rightEar.rotation.z = -0.25 + earBounce;
     this.leftEar.rotation.z = 0.25 - earBounce;
 
-    // Cauda abanando
     this.tailPivot.rotation.x = -0.3;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 2) * 0.5;
   }
@@ -285,20 +265,16 @@ export class ShepherdDog {
     this.backRightLeg.rotation.x = -legSwing * 0.8;
     this.backLeftLeg.rotation.x = legSwing;
 
-    // Corpo com mais movimento
     this.bodyGroup.position.y = 1.2 + Math.sin(this.walkCycle * 2) * 0.12;
     this.bodyGroup.rotation.x = Math.sin(this.walkCycle * 2) * 0.05;
 
-    // Língua a balançar
     this.tongue.rotation.z = Math.sin(this.walkCycle * 3) * 0.2;
 
-    // Orelhas para trás
     this.rightEar.rotation.x = 0.1;
     this.leftEar.rotation.x = 0.1;
     this.rightEar.rotation.z = -0.2 + Math.sin(this.walkCycle * 2) * 0.1;
     this.leftEar.rotation.z = 0.2 - Math.sin(this.walkCycle * 2) * 0.1;
 
-    // Cauda esticada
     this.tailPivot.rotation.x = 0.2;
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 3) * 0.4;
   }
@@ -311,7 +287,6 @@ export class ShepherdDog {
       return;
     }
 
-    // Calcular direção e distância ao alvo
     const dx = dogTargetX - this.group.position.x;
     const dz = dogTargetZ - this.group.position.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
@@ -367,11 +342,9 @@ export class ShepherdDog {
         this.group.position.copy(newPos);
         this.group.position.y = moveCheck.height;
       } else {
-        // Colisão: parar
         this.currentSpeed = 0;
       }
     } else {
-      // Fallback antigo
       this.group.position.add(direction.multiplyScalar(moveAmount));
     }
 
@@ -379,7 +352,7 @@ export class ShepherdDog {
     const limitX = 45;
 
     const limitZMin = -45;
-    const limitZMax = 20; // Manter à frente da câmara (z=25)
+    const limitZMax = 20;
 
     this.group.position.x = Math.max(
       -limitX,

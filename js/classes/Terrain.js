@@ -29,7 +29,6 @@ export class Terrain {
               child.receiveShadow = true;
               this.collidableMeshes.push(child);
 
-              // suavidade da geometria
               if (child.geometry) {
                 child.geometry.computeVertexNormals();
               }
@@ -38,7 +37,6 @@ export class Terrain {
                 child.material.flatShading = false;
                 child.material.needsUpdate = true;
 
-                // qualidade das texturas
                 [
                   "map",
                   "normalMap",
@@ -133,7 +131,7 @@ export class Terrain {
     );
     const slope = distance > 0 ? Math.abs(diff) / distance : 0;
 
-    if (slope > 2.5 || diff > 4.0 || diff < -5.0) {
+    if (slope > 4.0 || diff > 6.0 || diff < -6.0) {
       return { allowed: false, height: currentHeight };
     }
 
@@ -152,7 +150,6 @@ export class Terrain {
     const height = this.getHeightAt(x, z);
     if (height === null) return;
 
-    // Criar marcador visual temporário
     const markerGeo = new THREE.SphereGeometry(0.3, 8, 8);
     const markerMat = new THREE.MeshBasicMaterial({
       color: allowed ? 0x00ff00 : 0xff0000,
@@ -163,7 +160,6 @@ export class Terrain {
     marker.position.set(x, height + 0.5, z);
     this.debugGroup.add(marker);
 
-    // Remover após 2 segundos
     setTimeout(() => {
       this.debugGroup.remove(marker);
       markerGeo.dispose();
