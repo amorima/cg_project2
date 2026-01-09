@@ -54,11 +54,10 @@ dirLight.shadow.camera.bottom = -30;
 scene.add(dirLight);
 
 const terrain = new Terrain(scene);
-terrain.load().then(() => {
-  console.log("Terreno carregado. Use tecla 9 para debug.");
-});
+terrain.load().then(() => {});
 
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.enabled = false;
 
 let faceX = 0.5;
 let faceY = 0.5;
@@ -71,10 +70,17 @@ let dogTargetZ = 0;
 let shepherdDog = null;
 let debugMode = false;
 let cameraMode = "default";
+let appState = "intro";
+let transitionStartTime = 0;
+const transitionDuration = 2.0;
+const startSpherical = new THREE.Spherical();
+const endSpherical = new THREE.Spherical();
+const defaultCamPos = new THREE.Vector3(-15, 19, 45);
+let introAngle = 0;
 
 // Globais para raycasting (navegação vídeo)
 const raycaster = new THREE.Raycaster();
-const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); 
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const intersectionPoint = new THREE.Vector3();
 
 const keys = {
@@ -112,7 +118,23 @@ async function initML5() {
     await video.play();
 
     // Usa facemesh para obter ponto do nariz
-    const facemesh = ml5.facemesh(video, () => {});
+    const facemesh = ml5.facemesh(video, () => {
+      if (appState === "intro") {
+        setTimeout(() => {
+          appState = "transition";
+          transitionStartTime = performance.now();
+
+          startSpherical.setFromVector3(camera.position);
+          endSpherical.setFromVector3(defaultCamPos);
+
+          // Ajustar o ângulo final para garantir a rotação mais curta (evita piruetas)
+          while (endSpherical.theta - startSpherical.theta > Math.PI)
+            endSpherical.theta -= Math.PI * 2;
+          while (endSpherical.theta - startSpherical.theta < -Math.PI)
+            endSpherical.theta += Math.PI * 2;
+        }, 1000);
+      }
+    });
 
     facemesh.on("face", (results) => {
       if (results.length > 0 && ml5Active) {
@@ -150,9 +172,7 @@ async function initML5() {
     });
 
     initSpeechRecognition();
-  } catch (error) {
-    console.log("Webcam não disponível:", error);
-  }
+  } catch (error) {}
 }
 
 function initSpeechRecognition() {
@@ -197,7 +217,6 @@ function initSpeechRecognition() {
     recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const text = event.results[i][0].transcript.toLowerCase();
-        console.log("Voz detetada:", text);
         if (
           text.includes("boo") ||
           text.includes("bu") ||
@@ -210,7 +229,6 @@ function initSpeechRecognition() {
 
     recognition.onerror = (event) => {
       if (event.error !== "no-speech") {
-        console.log("Erro de reconhecimento:", event.error);
       }
     };
 
@@ -236,8 +254,6 @@ function triggerScare() {
     }, 150);
   }
 }
-
-initML5();
 
 let lastTime = performance.now();
 
@@ -380,10 +396,55 @@ function animate() {
     );
   });
 
+  if (appState === "intro") {
+    introAngle += deltaTime * 0.2;
+    camera.position.x = Math.sin(introAngle) * 130;
+    camera.position.z = Math.cos(introAngle) * 130;
+    camera.position.y = 90;
+    camera.lookAt(0, 0, 0);
+  } else if (appState === "transition") {
+    const t = Math.min(
+      (currentTime - transitionStartTime) / (transitionDuration * 1000),
+      1
+    );
+    // Ease in-out
+    const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+    const radius = THREE.MathUtils.lerp(
+      startSpherical.radius,
+      endSpherical.radius,
+      ease
+    );
+    const phi = THREE.MathUtils.lerp(
+      startSpherical.phi,
+      endSpherical.phi,
+      ease
+    );
+    const theta = THREE.MathUtils.lerp(
+      startSpherical.theta,
+      endSpherical.theta,
+      ease
+    );
+
+    camera.position.setFromSphericalCoords(radius, phi, theta);
+    camera.lookAt(0, 0, 0);
+
+    if (t >= 1) {
+      appState = "active";
+      if (cameraMode === "default") {
+        controls.enabled = true;
+      }
+    }
+  }
+
   renderer.render(scene, camera);
 }
 
 animate();
+
+// Inicia o ML5 com um atraso para garantir que a animação de introdução começa suavemente.
+// O carregamento do ML5 é pesado e bloqueia a thread principal momentaneamente.
+setTimeout(initML5, 2000);
 
 window.addEventListener("keydown", (event) => {
   if (
@@ -409,7 +470,6 @@ window.addEventListener("keydown", (event) => {
 
   if (event.key === "9") {
     debugMode = !debugMode;
-    console.log("Debug Mode:", debugMode ? "ATIVO" : "DESATIVO");
     if (shepherdDog) shepherdDog.toggleDebug(debugMode);
     sheepArray.forEach((sheep) => sheep.toggleDebug(debugMode));
     terrain.toggleDebug(debugMode);
