@@ -35,6 +35,13 @@ export class Sheep {
     this.idleDuration = 200 + Math.random() * 400;
     this.collisionTimer = 0;
 
+    // anti-stuck
+    this.stuckTimer = 0;
+    this.lastPosition = new THREE.Vector3();
+    this.movementThreshold = 0.1;
+    this.ignoreCollision = false;
+    this.ignoreCollisionTimer = 0;
+
     this.drawBody();
     this.drawHead();
     this.drawTail();
@@ -267,6 +274,16 @@ export class Sheep {
   update(sheepArray, dog, isScared, faceDetected, deltaTime, terrain) {
     const timeScale = deltaTime * 60;
 
+    // Gestão do timer de ignoreCollision
+    if (this.ignoreCollision) {
+      this.ignoreCollisionTimer -= deltaTime;
+      if (this.ignoreCollisionTimer <= 0) {
+        this.ignoreCollision = false;
+        this.stuckTimer = 0;
+        console.log("Ovelha: Colisões reativadas");
+      }
+    }
+
     // Se colidiu recentemente, roda no lugar antes de tentar andar de novo
     if (this.collisionTimer > 0) {
       this.collisionTimer -= deltaTime;
@@ -301,6 +318,17 @@ export class Sheep {
           this.group.position.x,
           this.group.position.z
         );
+
+        // permitir movimento mesmo com colisão
+        if (this.ignoreCollision) {
+          if (moveCheck.allowed) {
+            this.group.position.y = moveCheck.height + 1.8;
+          } else {
+            this.group.position.y = oldPos.y;
+          }
+          return;
+        }
+
         if (moveCheck.allowed) {
           this.group.position.y = moveCheck.height + 1.8;
         } else {
@@ -375,6 +403,40 @@ export class Sheep {
     }
 
     this.keepInBounds();
+
+    // anti-stuck: detetar se está preso
+    if (!this.isIdle) {
+      const movedDistance = this.group.position.distanceTo(this.lastPosition);
+
+      // Se moveu muito pouco (está a tentar mover mas não consegue)
+      if (movedDistance < this.movementThreshold) {
+        this.stuckTimer += deltaTime;
+
+        // Se preso por mais de 1 segundo, ativar fallback
+        if (this.stuckTimer > 1.0 && !this.ignoreCollision) {
+          const limit = 20;
+          const isAtBoundary =
+            Math.abs(this.group.position.x) >= limit - 1 ||
+            Math.abs(this.group.position.z) >= limit - 1;
+
+          // Apenas ativar se não estiver nos limites do mapa
+          if (!isAtBoundary) {
+            console.log("Ovelha presa! Desativando colisões por 2 segundos...");
+            this.ignoreCollision = true;
+            this.ignoreCollisionTimer = 2.0;
+            this.stuckTimer = 0;
+          } else {
+            // Nos limites: apenas resetar timer
+            this.stuckTimer = 0;
+          }
+        }
+      } else {
+        // Moveu-se normalmente, resetar timer
+        this.stuckTimer = 0;
+      }
+
+      this.lastPosition.copy(this.group.position);
+    }
   }
 
   moveTowardsTarget(sheepArray) {

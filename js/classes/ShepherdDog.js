@@ -41,6 +41,13 @@ export class ShepherdDog {
     this.currentSpeed = 0;
     this.targetRotation = 0;
 
+    // anti-stuck
+    this.stuckTimer = 0;
+    this.lastPosition = new THREE.Vector3();
+    this.movementThreshold = 0.1;
+    this.ignoreCollision = false;
+    this.ignoreCollisionTimer = 0;
+
     this.drawBody();
     this.drawHead();
     this.drawTail();
@@ -282,6 +289,16 @@ export class ShepherdDog {
   update(faceDetected, dogTargetX, dogTargetZ, deltaTime, terrain) {
     const timeScale = deltaTime * 60;
 
+    // timer de ignoreCollision
+    if (this.ignoreCollision) {
+      this.ignoreCollisionTimer -= deltaTime;
+      if (this.ignoreCollisionTimer <= 0) {
+        this.ignoreCollision = false;
+        this.stuckTimer = 0;
+        console.log("Cão: Colisões reativadas");
+      }
+    }
+
     if (!faceDetected) {
       this.idle(timeScale);
       return;
@@ -338,7 +355,14 @@ export class ShepherdDog {
         newPos.x,
         newPos.z
       );
-      if (moveCheck.allowed) {
+
+      // Se ignoreCollision está ativo, permitir movimento
+      if (this.ignoreCollision) {
+        this.group.position.copy(newPos);
+        if (moveCheck.allowed) {
+          this.group.position.y = moveCheck.height;
+        }
+      } else if (moveCheck.allowed) {
         this.group.position.copy(newPos);
         this.group.position.y = moveCheck.height;
       } else {
@@ -368,6 +392,41 @@ export class ShepherdDog {
       this.run(timeScale);
     } else {
       this.walk(timeScale);
+    }
+
+    // Sistema anti-stuck: detetar se está preso
+    if (this.isMoving) {
+      const movedDistance = this.group.position.distanceTo(this.lastPosition);
+
+      // Se moveu muito pouco
+      if (movedDistance < this.movementThreshold) {
+        this.stuckTimer += deltaTime;
+
+        // Se preso por mais de 1 segundo, ativar fallback
+        if (this.stuckTimer > 1.0 && !this.ignoreCollision) {
+          const limitX = 45;
+          const limitZMin = -45;
+          const limitZMax = 20;
+          const isAtBoundary =
+            Math.abs(this.group.position.x) >= limitX - 1 ||
+            this.group.position.z <= limitZMin + 1 ||
+            this.group.position.z >= limitZMax - 1;
+
+          // Apenas ativar se NÃO estiver nos limites
+          if (!isAtBoundary) {
+            console.log("Cão preso! Desativando colisões por 2 segundos...");
+            this.ignoreCollision = true;
+            this.ignoreCollisionTimer = 2.0;
+            this.stuckTimer = 0;
+          } else {
+            this.stuckTimer = 0;
+          }
+        }
+      } else {
+        this.stuckTimer = 0;
+      }
+
+      this.lastPosition.copy(this.group.position);
     }
   }
 }
