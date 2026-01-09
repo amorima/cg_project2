@@ -72,6 +72,11 @@ let shepherdDog = null;
 let debugMode = false;
 let cameraMode = "default";
 
+// Globais para raycasting (navegação vídeo)
+const raycaster = new THREE.Raycaster();
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); 
+const intersectionPoint = new THREE.Vector3();
+
 const keys = {
   ArrowUp: false,
   ArrowDown: false,
@@ -127,10 +132,18 @@ async function initML5() {
 
         faceDetected = true;
 
-        // Transformar coordenadas de rosto para posição alvo do cão
-        dogTargetX = (0.5 - faceX) * 50;
-        // Mapeia Y (0-1) para Z (-45 a 20) para manter o cão visível
-        dogTargetZ = -45 + faceY * 65;
+        // Converter coordenadas do vídeo para NDC (Normalized Device Coordinates)
+        // (1 - faceX) cria o efeito de espelho horizontal, intuitivo para webcam
+        const ndcX = (1 - faceX) * 2 - 1;
+        const ndcY = -(faceY * 2 - 1); // Inverter Y (vídeo é top-down, 3D é bottom-up)
+
+        raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
+
+        // Projetar o raio no chão para encontrar o ponto exato no mundo 3D
+        if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
+          dogTargetX = intersectionPoint.x;
+          dogTargetZ = intersectionPoint.z;
+        }
       } else {
         faceDetected = false;
       }
