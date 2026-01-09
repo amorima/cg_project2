@@ -39,6 +39,39 @@ export class Sheep {
     this.drawHead();
     this.drawTail();
     this.drawLegs();
+    this.createDebugVisuals();
+  }
+
+  createDebugVisuals() {
+    this.debugGroup = new THREE.Group();
+    this.debugGroup.visible = false;
+    this.group.add(this.debugGroup);
+
+    // Esfera de colisão pessoal (dist < 4)
+    const collisionGeo = new THREE.SphereGeometry(4, 8, 8);
+    const collisionMat = new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      wireframe: true,
+    });
+    this.debugCollision = new THREE.Mesh(collisionGeo, collisionMat);
+    this.debugGroup.add(this.debugCollision);
+
+    // Indicador de "medo"
+    const fearGeo = new THREE.RingGeometry(0.5, 0.7, 8);
+    fearGeo.rotateX(-Math.PI / 2);
+    const fearMat = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      side: THREE.DoubleSide,
+    });
+    this.debugFear = new THREE.Mesh(fearGeo, fearMat);
+    this.debugFear.visible = false;
+    this.debugGroup.add(this.debugFear);
+  }
+
+  toggleDebug(show) {
+    if (this.debugGroup) {
+      this.debugGroup.visible = show;
+    }
   }
 
   drawBody() {
@@ -233,14 +266,36 @@ export class Sheep {
     this.tailPivot.rotation.z = tailWag;
   }
 
-  update(sheepArray, dog, isScared, faceDetected, deltaTime) {
+  update(sheepArray, dog, isScared, faceDetected, deltaTime, terrain) {
     const timeScale = deltaTime * 60;
+    const oldPos = this.group.position.clone();
+
+    // Helper para verificar terreno
+    const checkTerrain = () => {
+      if (terrain) {
+        const moveCheck = terrain.canMoveTo(
+          oldPos.x,
+          oldPos.z,
+          this.group.position.x,
+          this.group.position.z
+        );
+        if (moveCheck.allowed) {
+          this.group.position.y = moveCheck.height + 1.8;
+        } else {
+          this.group.position.copy(oldPos); // Colisão: reverte movimento
+        }
+      }
+    };
 
     if (isScared) {
+      if (this.debugFear) this.debugFear.visible = true;
       this.fleeFromCenter(timeScale);
       this.run(timeScale);
       this.keepInBounds();
+      checkTerrain();
       return;
+    } else {
+      if (this.debugFear) this.debugFear.visible = false;
     }
 
     // Se há cão, verificar distância
@@ -257,12 +312,22 @@ export class Sheep {
           this.walk(timeScale);
         }
         this.keepInBounds();
+        checkTerrain();
         return;
       }
     }
 
     if (this.isIdle) {
       this.idleTimer += timeScale;
+      // Manter no chão mesmo idle
+      if (terrain) {
+        const h = terrain.getHeightAt(
+          this.group.position.x,
+          this.group.position.z
+        );
+        if (h !== null) this.group.position.y = h + 1.8;
+      }
+
       if (this.idleTimer > this.idleDuration) {
         this.idleTimer = 0;
         this.idleDuration = 200 + Math.random() * 400;
@@ -279,6 +344,7 @@ export class Sheep {
       if (Math.random() < 0.002) {
         this.isIdle = true;
       }
+      checkTerrain();
     }
 
     this.keepInBounds();

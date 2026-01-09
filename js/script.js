@@ -2,6 +2,7 @@ import * as THREE from "https://esm.sh/three@0.160.0";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import { ShepherdDog } from "./classes/ShepherdDog.js";
 import { Sheep } from "./classes/Sheep.js";
+import { Terrain } from "./classes/Terrain.js";
 
 // Setup da cena
 const scene = new THREE.Scene();
@@ -39,12 +40,8 @@ dirLight.shadow.camera.bottom = -30;
 scene.add(dirLight);
 
 // Chão
-const planeGeo = new THREE.PlaneGeometry(100, 100);
-const planeMat = new THREE.MeshStandardMaterial({ color: "#57a639" });
-const ground = new THREE.Mesh(planeGeo, planeMat);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
-scene.add(ground);
+const terrain = new Terrain(scene);
+terrain.load();
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -63,6 +60,9 @@ let dogTargetZ = 0;
 
 // Instância global do cão
 let shepherdDog = null;
+
+// Debug Mode
+let debugMode = false;
 
 // Estado da câmara
 let cameraMode = "default"; // 'default' ou 'firstPerson'
@@ -254,6 +254,7 @@ function animate() {
       const timeScale = deltaTime * 60;
       const speed = 0.15;
       const rotationSpeed = 0.05;
+      const oldPos = shepherdDog.group.position.clone();
 
       if (keys.ArrowUp) {
         const direction = new THREE.Vector3(
@@ -287,6 +288,21 @@ function animate() {
 
       if (keys.ArrowRight) {
         shepherdDog.group.rotation.y -= rotationSpeed * timeScale;
+      }
+
+      // Validar terreno para controlo manual
+      if (terrain) {
+        const moveCheck = terrain.canMoveTo(
+          oldPos.x,
+          oldPos.z,
+          shepherdDog.group.position.x,
+          shepherdDog.group.position.z
+        );
+        if (moveCheck.allowed) {
+          shepherdDog.group.position.y = moveCheck.height;
+        } else {
+          shepherdDog.group.position.copy(oldPos);
+        }
       }
 
       if (!keys.ArrowUp && !keys.ArrowDown) {
@@ -334,14 +350,27 @@ function animate() {
         dogPos.z + Math.cos(dogRotation) * 10
       );
     } else {
-      shepherdDog.update(faceDetected, dogTargetX, dogTargetZ, deltaTime);
+      shepherdDog.update(
+        faceDetected,
+        dogTargetX,
+        dogTargetZ,
+        deltaTime,
+        terrain
+      );
     }
   }
 
   // atualizar ovelhas
   sheepArray.forEach((sheep) => {
     const dogActive = faceDetected || cameraMode === "firstPerson";
-    sheep.update(sheepArray, shepherdDog, isScared, dogActive, deltaTime);
+    sheep.update(
+      sheepArray,
+      shepherdDog,
+      isScared,
+      dogActive,
+      deltaTime,
+      terrain
+    );
   });
 
   renderer.render(scene, camera);
@@ -370,6 +399,12 @@ window.addEventListener("keydown", (event) => {
       controls.target.set(0, 0, 0);
       controls.update();
     }
+  }
+
+  if (event.key === "9") {
+    debugMode = !debugMode;
+    if (shepherdDog) shepherdDog.toggleDebug(debugMode);
+    sheepArray.forEach((sheep) => sheep.toggleDebug(debugMode));
   }
 
   if (keys.hasOwnProperty(event.key)) {

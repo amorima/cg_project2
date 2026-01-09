@@ -46,6 +46,39 @@ export class ShepherdDog {
     this.drawHead();
     this.drawTail();
     this.drawLegs();
+    this.createDebugVisuals();
+  }
+
+  createDebugVisuals() {
+    this.debugGroup = new THREE.Group();
+    this.debugGroup.visible = false;
+    this.group.add(this.debugGroup);
+
+    // Raio de influência (12)
+    const infGeo = new THREE.SphereGeometry(12, 16, 16);
+    const infMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.3,
+    });
+    this.debugInfluence = new THREE.Mesh(infGeo, infMat);
+    this.debugGroup.add(this.debugInfluence);
+
+    // Raio de medo (6)
+    const fearGeo = new THREE.SphereGeometry(6, 16, 16);
+    const fearMat = new THREE.MeshBasicMaterial({
+      color: 0xffa500,
+      wireframe: true,
+    });
+    this.debugFear = new THREE.Mesh(fearGeo, fearMat);
+    this.debugGroup.add(this.debugFear);
+  }
+
+  toggleDebug(show) {
+    if (this.debugGroup) {
+      this.debugGroup.visible = show;
+    }
   }
 
   drawBody() {
@@ -273,7 +306,7 @@ export class ShepherdDog {
     this.tailPivot.rotation.z = Math.sin(this.walkCycle * 3) * 0.4;
   }
 
-  update(faceDetected, dogTargetX, dogTargetZ, deltaTime) {
+  update(faceDetected, dogTargetX, dogTargetZ, deltaTime, terrain) {
     const timeScale = deltaTime * 60;
 
     if (!faceDetected) {
@@ -291,6 +324,15 @@ export class ShepherdDog {
       this.isMoving = false;
       this.currentSpeed = 0;
       this.idle(timeScale);
+
+      // Manter no chão mesmo idle
+      if (terrain) {
+        const y = terrain.getHeightAt(
+          this.group.position.x,
+          this.group.position.z
+        );
+        if (y !== null) this.group.position.y = y;
+      }
       return;
     }
 
@@ -310,12 +352,35 @@ export class ShepherdDog {
     // Mover em frente
     const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(this.group.quaternion);
-    this.group.position.add(
-      direction.multiplyScalar(this.currentSpeed * timeScale)
-    );
+
+    const moveAmount = this.currentSpeed * timeScale;
+    const newPos = this.group.position
+      .clone()
+      .add(direction.multiplyScalar(moveAmount));
+
+    // Verificar terreno
+    if (terrain) {
+      const moveCheck = terrain.canMoveTo(
+        this.group.position.x,
+        this.group.position.z,
+        newPos.x,
+        newPos.z
+      );
+      if (moveCheck.allowed) {
+        this.group.position.copy(newPos);
+        this.group.position.y = moveCheck.height;
+      } else {
+        // Colisão: parar
+        this.currentSpeed = 0;
+      }
+    } else {
+      // Fallback antigo
+      this.group.position.add(direction.multiplyScalar(moveAmount));
+    }
 
     // Limitar à área
     const limitX = 45;
+
     const limitZMin = -45;
     const limitZMax = 20; // Manter à frente da câmara (z=25)
 
