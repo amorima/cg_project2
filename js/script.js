@@ -37,7 +37,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight("#ffffff", 1);
+const ambientLight = new THREE.AmbientLight("#ffffff", 0.9);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight("#ffffff", 4.5);
