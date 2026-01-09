@@ -1,7 +1,6 @@
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { rad } from "../utils.js";
 
-// Raio de influência do cão sobre as ovelhas
 const DOG_INFLUENCE_RADIUS = 20;
 const DOG_FEAR_RADIUS = 6;
 
@@ -47,7 +46,6 @@ export class Sheep {
     this.debugGroup.visible = false;
     this.group.add(this.debugGroup);
 
-    // Esfera de colisão pessoal (dist < 4)
     const collisionGeo = new THREE.SphereGeometry(4, 8, 8);
     const collisionMat = new THREE.MeshBasicMaterial({
       color: 0xff0000,
@@ -56,7 +54,6 @@ export class Sheep {
     this.debugCollision = new THREE.Mesh(collisionGeo, collisionMat);
     this.debugGroup.add(this.debugCollision);
 
-    // Indicador de "medo"
     const fearGeo = new THREE.RingGeometry(0.5, 0.7, 8);
     fearGeo.rotateX(-Math.PI / 2);
     const fearMat = new THREE.MeshBasicMaterial({

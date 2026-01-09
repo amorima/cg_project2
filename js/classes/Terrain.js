@@ -6,11 +6,12 @@ export class Terrain {
     this.scene = scene;
     this.model = null;
     this.raycaster = new THREE.Raycaster();
-    this.raycaster.ray.direction.set(0, -1, 0); // Sempre a apontar para baixo
+    this.raycaster.ray.direction.set(0, -1, 0);
     this.loaded = false;
-
-    // Lista de malhas que contam como obstáculos/chão
     this.collidableMeshes = [];
+    this.debugGroup = new THREE.Group();
+    this.debugGroup.visible = false;
+    this.scene.add(this.debugGroup);
   }
 
   load() {
@@ -22,17 +23,34 @@ export class Terrain {
         (gltf) => {
           this.model = gltf.scene;
 
-          // Configurar sombras e identificar meshes
           this.model.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
               this.collidableMeshes.push(child);
+
+              if (child.material) {
+                child.material.needsUpdate = true;
+
+                if (child.material.map) {
+                  child.material.map.colorSpace = THREE.SRGBColorSpace;
+                  child.material.map.needsUpdate = true;
+                }
+
+                if (!child.material.color) {
+                  child.material.color = new THREE.Color(0xffffff);
+                }
+
+                child.material.metalness = child.material.metalness || 0;
+                child.material.roughness =
+                  child.material.roughness !== undefined
+                    ? child.material.roughness
+                    : 1;
+              }
             }
           });
 
-          // Ajustar escala gigantesca para compensar o tamanho original minúsculo
-          const scale = 20; // Ajustado conforme feedback
+          const scale = 20;
           this.model.scale.set(scale, scale, scale);
 
           this.scene.add(this.model);
@@ -60,10 +78,7 @@ export class Terrain {
   getHeightAt(x, z) {
     if (!this.loaded) return 0;
 
-    // Origem do raio muito alta para garantir que apanha montanhas altas
     this.raycaster.ray.origin.set(x, 500, z);
-
-    // Intercetar com todas as meshes do modelo
     const intersects = this.raycaster.intersectObjects(
       this.collidableMeshes,
       false
@@ -73,36 +88,64 @@ export class Terrain {
       return intersects[0].point.y;
     }
 
-    return null; // Buraco ou fora do mapa
+    return null;
   }
 
-  /**
-   * Verifica se a posição futura é válida (não é parede/árvore/buraco)
-   */
   canMoveTo(currentX, currentZ, nextX, nextZ) {
     if (!this.loaded) return { allowed: true, height: 0 };
 
     const currentHeight = this.getHeightAt(currentX, currentZ);
     const nextHeight = this.getHeightAt(nextX, nextZ);
 
-    // Se saiu do mapa (null) - Impedir movimento
     if (nextHeight === null) {
       return { allowed: false, height: currentHeight || 0 };
     }
 
-    // Se a posição atual não estava no mapa (inicio do jogo), aceitar a nova
     if (currentHeight === null) {
       return { allowed: true, height: nextHeight };
     }
 
     const diff = nextHeight - currentHeight;
+    const distance = Math.sqrt(
+      (nextX - currentX) ** 2 + (nextZ - currentZ) ** 2
+    );
+    const slope = distance > 0 ? Math.abs(diff) / distance : 0;
 
-    // Ajustar tolerância baseada na escala atual
-    // Permitir subir desníveis maiores (ex: colinas) mas bloquear paredes
-    if (diff > 2.0 || diff < -3.0) {
+    if (slope > 2.5 || diff > 4.0 || diff < -5.0) {
       return { allowed: false, height: currentHeight };
     }
 
     return { allowed: true, height: nextHeight };
+  }
+
+  toggleDebug(show) {
+    if (this.debugGroup) {
+      this.debugGroup.visible = show;
+    }
+  }
+
+  visualizeCollisionPoint(x, z, allowed) {
+    if (!this.debugGroup.visible) return;
+
+    const height = this.getHeightAt(x, z);
+    if (height === null) return;
+
+    // Criar marcador visual temporário
+    const markerGeo = new THREE.SphereGeometry(0.3, 8, 8);
+    const markerMat = new THREE.MeshBasicMaterial({
+      color: allowed ? 0x00ff00 : 0xff0000,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    marker.position.set(x, height + 0.5, z);
+    this.debugGroup.add(marker);
+
+    // Remover após 2 segundos
+    setTimeout(() => {
+      this.debugGroup.remove(marker);
+      markerGeo.dispose();
+      markerMat.dispose();
+    }, 2000);
   }
 }

@@ -5,7 +5,6 @@ export class ShepherdDog {
     this.group = new THREE.Group();
     this.group.position.set(0, 0, 0);
 
-    // Materiais
     this.furMaterial = new THREE.MeshStandardMaterial({
       color: 0x8b4513,
       roughness: 0.9,
@@ -54,7 +53,6 @@ export class ShepherdDog {
     this.debugGroup.visible = false;
     this.group.add(this.debugGroup);
 
-    // Raio de influência (12)
     const infGeo = new THREE.SphereGeometry(12, 16, 16);
     const infMat = new THREE.MeshBasicMaterial({
       color: 0x00ff00,
@@ -65,7 +63,6 @@ export class ShepherdDog {
     this.debugInfluence = new THREE.Mesh(infGeo, infMat);
     this.debugGroup.add(this.debugInfluence);
 
-    // Raio de medo (6)
     const fearGeo = new THREE.SphereGeometry(6, 16, 16);
     const fearMat = new THREE.MeshBasicMaterial({
       color: 0xffa500,

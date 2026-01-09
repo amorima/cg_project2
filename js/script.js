@@ -4,7 +4,6 @@ import { ShepherdDog } from "./classes/ShepherdDog.js";
 import { Sheep } from "./classes/Sheep.js";
 import { Terrain } from "./classes/Terrain.js";
 
-// Setup da cena
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#87ceeb");
 scene.fog = new THREE.Fog("#87ceeb", 30, 150);
@@ -21,13 +20,13 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
 
-// Luzes
-const ambientLight = new THREE.AmbientLight("#ffffff", 0.6);
+const ambientLight = new THREE.AmbientLight("#ffffff", 0.8);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight("#ffffff", 0.8);
+const dirLight = new THREE.DirectionalLight("#ffffff", 1.0);
 dirLight.position.set(10, 20, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -39,35 +38,25 @@ dirLight.shadow.camera.top = 30;
 dirLight.shadow.camera.bottom = -30;
 scene.add(dirLight);
 
-// Chão
 const terrain = new Terrain(scene);
-terrain.load();
+terrain.load().then(() => {
+  console.log("Terreno carregado. Use tecla 9 para debug.");
+});
 
-// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// Estado global para ML5
 let faceX = 0.5;
 let faceY = 0.5;
 let faceDetected = false;
 let isScared = false;
 let scaredTimer = 0;
 let ml5Active = true;
-
-// Posição do cão pastor (controlado pela cara)
 let dogTargetX = 0;
 let dogTargetZ = 0;
-
-// Instância global do cão
 let shepherdDog = null;
-
-// Debug Mode
 let debugMode = false;
+let cameraMode = "default";
 
-// Estado da câmara
-let cameraMode = "default"; // 'default' ou 'firstPerson'
-
-// Controlo de teclado para primeira pessoa
 const keys = {
   ArrowUp: false,
   ArrowDown: false,
@@ -75,7 +64,6 @@ const keys = {
   ArrowRight: false,
 };
 
-// Criar rebanho de ovelhas
 const sheepArray = [];
 const numSheep = 12;
 
@@ -403,8 +391,10 @@ window.addEventListener("keydown", (event) => {
 
   if (event.key === "9") {
     debugMode = !debugMode;
+    console.log("Debug Mode:", debugMode ? "ATIVO" : "DESATIVO");
     if (shepherdDog) shepherdDog.toggleDebug(debugMode);
     sheepArray.forEach((sheep) => sheep.toggleDebug(debugMode));
+    terrain.toggleDebug(debugMode);
   }
 
   if (keys.hasOwnProperty(event.key)) {
