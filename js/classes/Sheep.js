@@ -1,6 +1,9 @@
 import * as THREE from "https://esm.sh/three@0.160.0";
-import { rad } from "../utils.js";
 
+// conversão de graus para radianos
+const rad = (degrees) => degrees * (Math.PI / 180);
+
+// raios de influência do cão pastor
 const DOG_INFLUENCE_RADIUS = 20;
 const DOG_FEAR_RADIUS = 6;
 

@@ -6,6 +6,7 @@ import { Terrain } from "./classes/Terrain.js";
 
 const scene = new THREE.Scene();
 
+// criar um gradiente vertical para o céu usando um canvas 1x32
 const canvas = document.createElement("canvas");
 canvas.width = 1;
 canvas.height = 32;
@@ -52,40 +53,24 @@ document.body.appendChild(renderer.domElement);
 
 // Botão de Mute
 const muteBtn = document.createElement("button");
-muteBtn.textContent = "🔊";
-Object.assign(muteBtn.style, {
-  position: "absolute",
-  top: "20px",
-  right: "20px",
-  zIndex: "1000",
-  background: "none",
-  border: "none",
-  color: "white",
-  fontSize: "30px",
-  cursor: "pointer",
-});
+muteBtn.id = "muteBtn";
+muteBtn.className = "control-btn";
+muteBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
 document.body.appendChild(muteBtn);
 
 muteBtn.addEventListener("click", () => {
   const isMuted = backgroundSound.getVolume() === 0;
   backgroundSound.setVolume(isMuted ? 0.5 : 0);
-  muteBtn.textContent = isMuted ? "🔊" : "🔇";
+  muteBtn.innerHTML = isMuted
+    ? '<i class="fas fa-volume-up"></i>'
+    : '<i class="fas fa-volume-mute"></i>';
 });
 
 // Botão de Microfone
 const micBtn = document.createElement("button");
-micBtn.textContent = "🎙️";
-Object.assign(micBtn.style, {
-  position: "absolute",
-  top: "20px",
-  right: "70px",
-  zIndex: "1000",
-  background: "none",
-  border: "none",
-  color: "white",
-  fontSize: "30px",
-  cursor: "pointer",
-});
+micBtn.id = "micBtn";
+micBtn.className = "control-btn";
+micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
 document.body.appendChild(micBtn);
 
 let audioRecognitionActive = true;
@@ -94,11 +79,9 @@ let audioCallback = null;
 
 micBtn.addEventListener("click", () => {
   audioRecognitionActive = !audioRecognitionActive;
-  micBtn.textContent = audioRecognitionActive ? "🎙️" : "🚫";
-  console.log(
-    "[Audio] Microfone:",
-    audioRecognitionActive ? "ATIVO" : "DESATIVADO"
-  );
+  micBtn.innerHTML = audioRecognitionActive
+    ? '<i class="fas fa-microphone"></i>'
+    : '<i class="fas fa-microphone-slash"></i>';
 
   if (!audioRecognitionActive && audioRecognizer) {
     audioRecognizer.stopListening();
@@ -153,7 +136,7 @@ const endSpherical = new THREE.Spherical();
 const defaultCamPos = new THREE.Vector3(-15, 19, 45);
 let introAngle = 0;
 
-// Globais para raycasting (navegação vídeo)
+// raycasting para projetar a posição da cabeça no plano 3d
 const raycaster = new THREE.Raycaster();
 const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 const intersectionPoint = new THREE.Vector3();
@@ -192,7 +175,7 @@ async function initML5() {
     video.srcObject = stream;
     await video.play();
 
-    // Usa facemesh para obter ponto do nariz
+    // usar ml5 facemesh para detetar o nariz e controlar o cão
     const facemesh = ml5.facemesh(video, () => {
       if (appState === "intro") {
         setTimeout(() => {
@@ -222,21 +205,20 @@ async function initML5() {
         const targetFaceX = nose[0] / vW;
         const targetFaceY = nose[1] / vH;
 
-        // Suavização (lerp) para reduzir o tremor do nariz
+        // suavizar movimento para reduzir tremor da deteção
         const lerpAmount = 0.2;
         faceX += (targetFaceX - faceX) * lerpAmount;
         faceY += (targetFaceY - faceY) * lerpAmount;
 
         faceDetected = true;
 
-        // Converter coordenadas do vídeo para NDC (Normalized Device Coordinates)
-        // (1 - faceX) cria o efeito de espelho horizontal, intuitivo para webcam
+        // converter para normalized device coordinates com efeito espelho
         const ndcX = (1 - faceX) * 2 - 1;
-        const ndcY = -(faceY * 2 - 1); // Inverter Y (vídeo é top-down, 3D é bottom-up)
+        const ndcY = -(faceY * 2 - 1);
 
         raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
 
-        // Projetar o raio no chão para encontrar o ponto exato no mundo 3D
+        // projetar no plano do chão para obter posição 3d
         if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
           dogTargetX = intersectionPoint.x;
           dogTargetZ = intersectionPoint.z;
@@ -252,13 +234,12 @@ async function initML5() {
 
 async function initTeachableMachine() {
   try {
-    // Construir URL absoluta baseada na localização atual
+    // construir url absoluta para o modelo teachable machine
     const baseURL =
       window.location.origin +
       window.location.pathname.replace(/\/[^/]*$/, "/");
     const URL = baseURL + "assets/teachable-machine/";
 
-    // Criar o reconhecedor de áudio
     const checkpointURL = URL + "model.json";
     const metadataURL = URL + "metadata.json";
 
@@ -269,16 +250,13 @@ async function initTeachableMachine() {
       metadataURL
     );
 
-    // Garantir que o modelo está carregado
     await recognizer.ensureModelLoaded();
 
     const classLabels = recognizer.wordLabels();
-    console.log("[Audio] Sistema ativo. Classes:", classLabels);
 
-    // Guardar recognizer globalmente
     audioRecognizer = recognizer;
 
-    // Definir callback de áudio
+    // processar resultados do modelo de áudio em tempo real
     audioCallback = (result) => {
       if (!audioRecognitionActive) return;
 
@@ -296,18 +274,13 @@ async function initTeachableMachine() {
 
       const predictedClass = classLabels[maxIndex];
 
-      // Debug de áudio
-      console.log(`[Audio] ${predictedClass}: ${(maxScore * 100).toFixed(1)}%`);
-
-      // Verificar se NÃO é "Background Noise" E ultrapassa 97%
+      // ignorar ruído de fundo e exigir 90% de confiança
       if (
         maxScore > 0.9 &&
         predictedClass !== "Background Noise" &&
         predictedClass !== "_background_noise_"
       ) {
-        console.log("🔊 SOM DETETADO! Ativando triggerScare()...");
         triggerScare();
-        console.log("isScared:", isScared, "| scaredTimer:", scaredTimer);
       }
     };
 
@@ -324,11 +297,9 @@ async function initTeachableMachine() {
 }
 
 function triggerScare() {
-  console.log("[Audio] triggerScare() chamado! isScared antes:", isScared);
   if (!isScared) {
     isScared = true;
     scaredTimer = 3;
-    console.log("[Audio] Ovelhas agora estão assustadas por 3 segundos");
 
     const flash = document.getElementById("flash-overlay");
     flash.style.opacity = "0.6";
@@ -354,7 +325,6 @@ function animate() {
     }
   }
 
-  // Atualizar cão pastor
   if (shepherdDog) {
     if (cameraMode === "firstPerson") {
       const timeScale = deltaTime * 60;
@@ -396,7 +366,6 @@ function animate() {
         shepherdDog.group.rotation.y -= rotationSpeed * timeScale;
       }
 
-      // Validar terreno para controlo manual
       if (terrain) {
         const moveCheck = terrain.canMoveTo(
           oldPos.x,
@@ -429,7 +398,6 @@ function animate() {
         Math.min(limitZMax, shepherdDog.group.position.z)
       );
 
-      // Atualizar animação
       if (shepherdDog.isMoving) {
         if (keys.ArrowUp && shepherdDog.currentSpeed > 0.08) {
           shepherdDog.run(timeScale);
@@ -440,7 +408,7 @@ function animate() {
         shepherdDog.idle(timeScale);
       }
 
-      // Câmara à frente do cão
+      // posicionar câmara atrás do cão em primeira pessoa
       const dogPos = shepherdDog.group.position;
       const dogRotation = shepherdDog.group.rotation.y;
 
@@ -466,7 +434,6 @@ function animate() {
     }
   }
 
-  // Atualizar ovelhas
   sheepArray.forEach((sheep) => {
     const dogActive = faceDetected || cameraMode === "firstPerson";
     sheep.update(
@@ -490,7 +457,6 @@ function animate() {
       (currentTime - transitionStartTime) / (transitionDuration * 1000),
       1
     );
-    // Ease in-out
     const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
     const radius = THREE.MathUtils.lerp(
@@ -525,8 +491,7 @@ function animate() {
 
 animate();
 
-// Inicia o ML5 com um atraso para garantir que a animação de introdução começa suavemente.
-// O carregamento do ML5 é pesado e bloqueia a thread principal momentaneamente.
+// delay para permitir intro cinematica antes de carregar ml5
 setTimeout(initML5, 2000);
 
 window.addEventListener("keydown", (event) => {

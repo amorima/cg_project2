@@ -2,6 +2,304 @@ body {
   margin: 0;
   overflow: hidden;
 }
+
 canvas {
   display: block;
+}
+
+/* Botões de controlo */
+.control-btn {
+  position: absolute;
+  z-index: 1000;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 30px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+}
+
+#muteBtn {
+  top: 20px;
+  right: 20px;
+}
+
+#micBtn {
+  top: 20px;
+  right: 70px;
+}
+
+#infoBtn {
+  bottom: 20px;
+  right: 20px;
+  font-size: 35px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Modal */
+#infoModal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#infoModal.show {
+  display: flex;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0;
+  border-radius: 24px;
+  max-width: 680px;
+  width: 92%;
+  max-height: 85vh;
+  overflow-y: auto;
+  color: white;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32px 40px;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-title i {
+  font-size: 32px;
+  color: #ffd700;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.modal-body {
+  padding: 40px;
+  line-height: 1.7;
+}
+
+.instructions-section,
+.debug-section {
+  margin-bottom: 32px;
+}
+
+.instructions-section:last-child,
+.debug-section:last-child {
+  margin-bottom: 0;
+}
+
+.modal-body h3 {
+  margin: 0 0 20px 0;
+  font-size: 22px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffd700;
+  letter-spacing: -0.3px;
+}
+
+.modal-body h3 i {
+  font-size: 24px;
+}
+
+.instructions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.instructions-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.instructions-list li:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(4px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.instructions-list li i {
+  font-size: 20px;
+  min-width: 20px;
+  margin-top: 2px;
+  color: #ffd700;
+}
+
+.instructions-list li span {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+kbd {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-family: "Courier New", monospace;
+  font-size: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+}
+
+.debug-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.debug-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 15px;
+}
+
+.color-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.color-indicator.green {
+  background: #4ade80;
+}
+
+.color-indicator.yellow {
+  background: #fbbf24;
+}
+
+.modal-footer {
+  padding: 28px 40px;
+  background: rgba(0, 0, 0, 0.15);
+  border-top: 2px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.copyright {
+  margin: 0 0 16px 0;
+  font-size: 15px;
+  opacity: 0.95;
+  letter-spacing: 0.3px;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.github-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.github-link i {
+  font-size: 20px;
+}
+
+/* Scrollbar para o modal */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0 24px 24px 0;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }

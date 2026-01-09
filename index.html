@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Projeto MEH!</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
     <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
   </head>
   <body>
     <video id="webcam" autoplay playsinline style="display: none"></video>
+
     <div
       id="flash-overlay"
       style="
@@ -26,6 +31,108 @@
         transition: opacity 0.1s;
       "
     ></div>
+
+    <button id="infoBtn" class="control-btn" title="Informações">
+      <i class="fas fa-info-circle"></i>
+    </button>
+
+    <div id="infoModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">
+            <i class="fas fa-gamepad"></i>
+            <h2>Como Jogar</h2>
+          </div>
+          <button class="modal-close" id="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="instructions-section">
+            <h3><i class="fas fa-hand-pointer"></i> Controlos</h3>
+            <ul class="instructions-list">
+              <li>
+                <i class="fas fa-user-circle"></i>
+                <span
+                  >Guie o cão pastor movendo a sua <strong>cabeça</strong> na
+                  direção para onde quer ir</span
+                >
+              </li>
+              <li>
+                <i class="fas fa-microphone"></i>
+                <span
+                  >Diga <strong>"fujam"</strong> para as ovelhas fugirem em
+                  pânico</span
+                >
+              </li>
+              <li>
+                <i class="fas fa-keyboard"></i>
+                <span
+                  >Carregue em <kbd>1</kbd> para guiar o cão na
+                  <strong>primeira pessoa</strong> (use setas do teclado)</span
+                >
+              </li>
+              <li>
+                <i class="fas fa-bug"></i>
+                <span
+                  >Carregue em <kbd>9</kbd> para ver o raio das colisões</span
+                >
+              </li>
+            </ul>
+          </div>
+          <div class="debug-section">
+            <h3>
+              <i class="fas fa-circle-notch"></i> Raios de Debug (Tecla 9)
+            </h3>
+            <div class="debug-info">
+              <div class="debug-item">
+                <span class="color-indicator green"></span>
+                <span
+                  ><strong>Verde:</strong> Raio de influência do cão (ovelhas
+                  começam a fugir)</span
+                >
+              </div>
+              <div class="debug-item">
+                <span class="color-indicator yellow"></span>
+                <span
+                  ><strong>Amarelo:</strong> Raio de medo (ovelhas correm mais
+                  depressa)</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <p class="copyright">
+            © 2026 <strong>António Amorim</strong> @ ESMAD
+          </p>
+          <a
+            href="https://github.com/amorima/cg_project2"
+            target="_blank"
+            class="github-link"
+          >
+            <i class="fab fa-github"></i>
+            <span>Ver repositório no GitHub</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="./js/script.js"></script>
+    <script>
+      document.getElementById("infoBtn").addEventListener("click", () => {
+        document.getElementById("infoModal").classList.add("show");
+      });
+
+      document.getElementById("closeModal").addEventListener("click", () => {
+        document.getElementById("infoModal").classList.remove("show");
+      });
+
+      document.getElementById("infoModal").addEventListener("click", (e) => {
+        if (e.target.id === "infoModal") {
+          document.getElementById("infoModal").classList.remove("show");
+        }
+      });
+    </script>
   </body>
 </html>
