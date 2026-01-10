@@ -79,7 +79,7 @@ export class Terrain {
         },
         undefined,
         (error) => {
-          console.error("Erro ao carregar o terreno:", error);
+          // console.error("Erro ao carregar o terreno:", error);
           reject(error);
         }
       );

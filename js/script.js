@@ -292,7 +292,7 @@ async function initTeachableMachine() {
       overlapFactor: 0.5,
     });
   } catch (error) {
-    console.error("[Audio] Erro ao inicializar:", error);
+    // console.error("[Audio] Erro ao inicializar:", error);
   }
 }
 
