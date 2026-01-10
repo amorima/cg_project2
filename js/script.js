@@ -36,12 +36,24 @@ camera.add(listener);
 const backgroundSound = new THREE.Audio(listener);
 backgroundSound.setVolume(0.5);
 
+let audioBuffer = null;
+
+// Carrega o áudio mas não toca automaticamente
 const audioLoader = new THREE.AudioLoader();
-audioLoader.load("assets/sound/background.mp3", function (buffer) {
-  backgroundSound.setBuffer(buffer);
-  backgroundSound.setLoop(true);
-  backgroundSound.play();
+audioLoader.load("/assets/sound/background.mp3", function (buffer) {
+  audioBuffer = buffer;
 });
+
+// Inicia o áudio após ml5 carregar com sucesso
+function initializeAudio() {
+  if (audioBuffer && !backgroundSound.isPlaying) {
+    backgroundSound.setBuffer(audioBuffer);
+    backgroundSound.setLoop(true);
+    backgroundSound.play().catch(() => {
+      // Se falhar, será retentado
+    });
+  }
+}
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -177,6 +189,9 @@ async function initML5() {
 
     // usar ml5 facemesh para detetar o nariz e controlar o cão
     const facemesh = ml5.facemesh(video, () => {
+      // Inicia o áudio quando ml5 carrega com sucesso
+      initializeAudio();
+
       if (appState === "intro") {
         setTimeout(() => {
           appState = "transition";
