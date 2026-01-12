@@ -191,8 +191,25 @@ async function initML5() {
       video: true,
       audio: false,
     });
+
     video.srcObject = stream;
     await video.play();
+
+    // tentar obter a resolução real fornecida pela track (mais fiável)
+    const track = stream.getVideoTracks && stream.getVideoTracks()[0];
+    let streamWidth = 640;
+    let streamHeight = 480;
+    if (track && typeof track.getSettings === "function") {
+      const settings = track.getSettings();
+      if (settings && settings.width) streamWidth = settings.width;
+      if (settings && settings.height) streamHeight = settings.height;
+    }
+
+    // fallback: atualizar quando os metadados do vídeo carregarem
+    video.addEventListener("loadedmetadata", () => {
+      if (video.videoWidth) streamWidth = video.videoWidth;
+      if (video.videoHeight) streamHeight = video.videoHeight;
+    });
 
     // usar ml5 facemesh para detetar o nariz e controlar o cão
     const facemesh = ml5.facemesh(video, () => {
@@ -220,9 +237,15 @@ async function initML5() {
       if (results.length > 0 && ml5Active) {
         const nose = results[0].scaledMesh[1];
 
-        // Validar dimensões do vídeo
-        const vW = video.videoWidth || 640;
-        const vH = video.videoHeight || 480;
+        // Usar resolução obtida a partir da track ou do elemento vídeo
+        const vW =
+          typeof streamWidth !== "undefined"
+            ? streamWidth
+            : video.videoWidth || 640;
+        const vH =
+          typeof streamHeight !== "undefined"
+            ? streamHeight
+            : video.videoHeight || 480;
 
         const targetFaceX = nose[0] / vW;
         const targetFaceY = nose[1] / vH;
