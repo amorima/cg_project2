@@ -49,9 +49,16 @@ function initializeAudio() {
   if (audioBuffer && !backgroundSound.isPlaying) {
     backgroundSound.setBuffer(audioBuffer);
     backgroundSound.setLoop(true);
-    backgroundSound.play().catch(() => {
-      // Se falhar, será retentado
-    });
+    try {
+      const playResult = backgroundSound.play();
+      if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => {
+          // Se falhar, será retentado
+        });
+      }
+    } catch (e) {
+      // Erro síncrono ao tentar reproduzir, ignorar por enquanto
+    }
   }
 }
 
